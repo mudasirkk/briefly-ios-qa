@@ -35,20 +35,29 @@ appId: host.exp.Exponent
 # Confirm the sheet is gone and the real form is reachable before proceeding.
 - assertVisible: "Email"
 - takeScreenshot: artifacts/10-login-screen
-# --- Sign in with the QA test account. Both fields are tapped by COORDINATE:
-# a placeholder-text tap does not reliably focus the RN TextInput (proven — the
-# email stayed empty while the coordinate-tapped password filled). hideKeyboard
-# between fields returns the KeyboardAvoidingView to its resting position so the
-# calibrated coordinates stay valid. ---
+# --- Sign in with the QA test account. Both fields are tapped by COORDINATE
+# (a placeholder-text tap does not focus the RN TextInput). The first field tap
+# after the screen settles needs a beat for focus+keyboard before typing, or the
+# characters are dropped (proven: the SECOND field always filled, the first never
+# did). Wait for the login screen to settle, then wait after each field tap for
+# the keyboard to slide in before inputText. Per-field screenshots verify each. ---
+- waitForAnimationToEnd:
+    timeout: 4000
 - tapOn:
     point: "50%,60%"
+- waitForAnimationToEnd:
+    timeout: 3000
 - inputText: ${TEST_EMAIL}
+- takeScreenshot: artifacts/11a-email
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
     point: "50%,70%"
+- waitForAnimationToEnd:
+    timeout: 3000
 - inputText: ${TEST_PASSWORD}
+- takeScreenshot: artifacts/11b-password
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 2000
