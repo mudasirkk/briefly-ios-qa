@@ -11,4 +11,8 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 150000
+# Dismiss Expo Go's first-launch developer-menu intro sheet if present.
+- tapOn:
+    text: "^Continue$"
+    optional: true
 - takeScreenshot: artifacts/01-login-screen
