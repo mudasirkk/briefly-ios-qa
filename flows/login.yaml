@@ -7,30 +7,25 @@ appId: host.exp.Exponent
 # supabase.auth.setSession — so opening the preview update with the freshly-minted
 # tokens logs the QA account straight in, and the root guard routes to /now.
 #
-# Key the retry on a FEED element ("For you"), so a successful injection stops the
-# loop after ONE open. (Repeated opens were shaking Expo Go into its runtime dev
-# menu — the source of the "Go Home" mis-tap that ejected the app.)
-- repeat:
-    times: 6
-    while:
-      notVisible: "For you"
-    commands:
-      - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
-      - tapOn:
-          text: "Open"
-          optional: true
-      - waitForAnimationToEnd:
-          timeout: 8000
-# The feed is up (injection routed to /now; "For you" shows above any overlay).
-# Expo Go's first-launch dev-menu sheet may still cover the lower half — dismiss
-# via its Continue button (bottom-center; native overlay, not in the a11y tree).
-- waitForAnimationToEnd:
-    timeout: 3000
+# CRITICAL: open exactly ONCE. Repeated opens shake Expo Go into its runtime dev
+# menu (Reload / Go Home) — a NATIVE overlay that hides the whole RN tree from
+# Maestro, so even a fully-loaded feed reads as "not visible". One open avoids it.
+- openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
+# iOS 'Open in "Expo Go"?' confirmation — tap it when present (waits internally),
+# skipped if the launch went straight through.
+- tapOn:
+    text: "Open"
+    optional: true
+# Injection routes to the Briefs (/now) feed. "For you" sits at the top, visible
+# to Maestro above Expo Go's first-launch dev-menu SHEET (which only covers the
+# lower half — unlike the runtime menu, it does not hide the RN tree).
+- extendedWaitUntil:
+    visible: "For you"
+    timeout: 150000
+# Dismiss that first-launch sheet via its Continue button (bottom-center; native
+# overlay, not in the a11y tree) so the tab bar below it becomes tappable.
 - tapOn:
     point: "50%,92%"
 - waitForAnimationToEnd:
     timeout: 3000
-- extendedWaitUntil:
-    visible: "For you"
-    timeout: 60000
 - takeScreenshot: artifacts/12-logged-in
