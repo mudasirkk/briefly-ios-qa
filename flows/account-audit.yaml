@@ -1,0 +1,123 @@
+appId: host.exp.Exponent
+---
+# Log in (self-healing launch + testID field entry), then audit the Account page.
+- runFlow: login.yaml
+
+# --- Reach the Account page: Home tab -> avatar (top-right) ---
+- tapOn:
+    text: "Home"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/20-home
+- tapOn:
+    text: "Profile and settings.*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/21-account-top
+
+# --- Capture the full page top-to-bottom ---
+- scroll
+- takeScreenshot: artifacts/22-account-scroll1
+- scroll
+- takeScreenshot: artifacts/23-account-scroll2
+- scroll
+- takeScreenshot: artifacts/24-account-scroll3
+- scroll
+- takeScreenshot: artifacts/25-account-bottom
+
+# --- Feed appearance segmented control (Light / Dark / System) ---
+- scrollUntilVisible:
+    element:
+      text: "Feed appearance"
+    direction: UP
+    timeout: 20000
+- takeScreenshot: artifacts/26-appearance-before
+- tapOn:
+    text: "Dark"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/27-appearance-dark
+- tapOn:
+    text: "Light"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/28-appearance-light
+
+# --- Settings row: Help & support (opens an Alert) ---
+- scrollUntilVisible:
+    element:
+      text: "Help & support"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Help & support"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/29-help-alert
+- tapOn:
+    text: "OK"
+    optional: true
+
+# --- Settings row: Notification preferences (opens a bottom sheet) ---
+- scrollUntilVisible:
+    element:
+      text: "Notification preferences"
+    direction: UP
+    timeout: 20000
+- tapOn: "Notification preferences"
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: artifacts/30-notif-sheet
+# Dismiss the sheet (swipe down from its top).
+- swipe:
+    start: "50%,40%"
+    end: "50%,90%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# --- Advanced disclosure (reveals password / email / delete) ---
+- scrollUntilVisible:
+    element:
+      text: "Advanced"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Advanced"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/31-advanced-open
+- scrollUntilVisible:
+    element:
+      text: "Delete account"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: artifacts/32-advanced-danger
+
+# --- Delete account confirm dialog — OPEN then CANCEL (never confirm) ---
+- tapOn: "Delete account"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/33-delete-confirm
+- tapOn:
+    text: "Cancel"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+
+# --- Log out confirm dialog — OPEN then CANCEL (stay signed in) ---
+- scrollUntilVisible:
+    element:
+      text: "Log out"
+    direction: UP
+    timeout: 20000
+- tapOn: "Log out"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/34-logout-confirm
+- tapOn:
+    text: "Cancel"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: artifacts/35-audit-end
