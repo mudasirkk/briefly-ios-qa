@@ -2,6 +2,10 @@ appId: host.exp.Exponent
 ---
 # Boot Expo Go straight into the Briefly preview update.
 - openLink: ${DEEP_LINK}
+# iOS confirms custom-scheme links with an 'Open in "Expo Go"?' dialog.
+- tapOn:
+    text: "Open"
+    optional: true
 # Expo Go fetches the update, then the app hits the Render backend
 # (free dyno cold start can take ~60s, hence the long timeout).
 - extendedWaitUntil:

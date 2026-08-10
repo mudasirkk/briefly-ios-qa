@@ -81,3 +81,4 @@ jobs:
           name: ios-qa-artifacts
           path: artifacts/
           if-no-files-found: warn
+          include-hidden-files: true
