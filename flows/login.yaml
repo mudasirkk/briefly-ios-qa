@@ -25,16 +25,22 @@ appId: host.exp.Exponent
 # Confirm the sheet is gone and the real form is reachable before proceeding.
 - assertVisible: "Email"
 - takeScreenshot: artifacts/10-login-screen
-# --- Sign in with the QA test account. Target inputs by their field labels
-# (the TextInputs have no testID; the bullet password placeholder is unmatchable). ---
-- tapOn:
-    below: "Email"
+# --- Sign in with the QA test account. Email field is targeted by its visible
+# placeholder; the password field's placeholder is bullet glyphs (unmatchable),
+# so it's tapped by a coordinate calibrated to the login layout. hideKeyboard
+# between fields returns the KeyboardAvoidingView to its resting position so the
+# password coordinate stays valid. ---
+- tapOn: "you@example.com"
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
 - tapOn:
-    below: "Password"
+    point: "50%,70%"
 - inputText: ${TEST_PASSWORD}
 - hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 2000
 - takeScreenshot: artifacts/11-credentials-entered
 - tapOn: "Sign in"
 # Landing screen after auth is the Briefs (/now) feed tab.
