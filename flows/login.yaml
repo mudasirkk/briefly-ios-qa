@@ -12,14 +12,18 @@ appId: host.exp.Exponent
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 150000
-# Expo Go's first-launch developer-menu sheet auto-opens OVER the login form
-# (covering Email/Password/Sign in). Wait for it, then dismiss via its Continue
-# button so the real form is reachable. `^Continue$` avoids "Continue with Google".
-- extendedWaitUntil:
-    visible: "This is the developer menu"
-    timeout: 25000
+# Expo Go's first-launch developer-menu sheet slides up OVER the login form.
+# It is a NATIVE overlay whose text/buttons are NOT in the accessibility tree,
+# so it can only be dismissed by a coordinate tap on its "Continue" button
+# (bottom-center). Let it finish animating in first.
+- waitForAnimationToEnd:
+    timeout: 5000
 - tapOn:
-    text: "^Continue$"
+    point: "50%,92%"
+- waitForAnimationToEnd:
+    timeout: 3000
+# Confirm the sheet is gone and the real form is reachable before proceeding.
+- assertVisible: "Email"
 - takeScreenshot: artifacts/10-login-screen
 # --- Sign in with the QA test account. Target inputs by their field labels
 # (the TextInputs have no testID; the bullet password placeholder is unmatchable). ---
