@@ -61,7 +61,7 @@ jobs:
           mkdir -p artifacts
           xcrun simctl launch "$UDID" host.exp.Exponent
           sleep 15
-          xcrun simctl screenshot "$UDID" artifacts/00-expo-go-direct-launch.png
+          xcrun simctl io "$UDID" screenshot artifacts/00-expo-go-direct-launch.png
           xcrun simctl terminate "$UDID" host.exp.Exponent || true
 
       - name: Install Maestro
