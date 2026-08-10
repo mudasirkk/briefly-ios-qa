@@ -1,0 +1,19 @@
+appId: host.exp.Exponent
+---
+- runFlow: login.yaml
+# Account is reached from the Home tab's avatar button (top-right).
+- tapOn:
+    text: "Home"
+    optional: true
+- takeScreenshot: artifacts/13-home
+- tapOn:
+    text: "Profile and settings.*"
+    optional: true
+- takeScreenshot: artifacts/14-account-top
+# Scroll the whole page to capture every section/button.
+- scroll
+- takeScreenshot: artifacts/15-account-mid
+- scroll
+- takeScreenshot: artifacts/16-account-settings
+- scroll
+- takeScreenshot: artifacts/17-account-bottom

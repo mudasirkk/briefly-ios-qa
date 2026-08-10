@@ -1,0 +1,31 @@
+appId: host.exp.Exponent
+---
+# Boot Expo Go straight into the Briefly preview update.
+- openLink: ${DEEP_LINK}
+# iOS confirms custom-scheme links with an 'Open in "Expo Go"?' dialog.
+- tapOn:
+    text: "Open"
+    optional: true
+# Wait for the Briefly login screen (Render cold start can take ~60s).
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 150000
+# Dismiss Expo Go's first-launch developer-menu intro sheet if present.
+- tapOn:
+    text: "^Continue$"
+    optional: true
+- takeScreenshot: artifacts/10-login-screen
+# --- Sign in with the QA test account ---
+- tapOn: "you@example.com"
+- inputText: ${TEST_EMAIL}
+- hideKeyboard
+- tapOn: "••••••••"
+- inputText: ${TEST_PASSWORD}
+- hideKeyboard
+- takeScreenshot: artifacts/11-credentials-entered
+- tapOn: "Sign in"
+# Landing screen after auth is the Briefs (/now) feed tab.
+- extendedWaitUntil:
+    visible: "Briefs"
+    timeout: 120000
+- takeScreenshot: artifacts/12-logged-in
