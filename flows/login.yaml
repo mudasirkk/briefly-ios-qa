@@ -2,10 +2,12 @@ appId: host.exp.Exponent
 ---
 # Boot Expo Go straight into the Briefly preview update.
 - openLink: ${DEEP_LINK}
-# iOS confirms custom-scheme links with an 'Open in "Expo Go"?' dialog.
-- tapOn:
-    text: "Open"
-    optional: true
+# iOS confirms custom-scheme links with an 'Open in "Expo Go"?' dialog that
+# appears a beat AFTER openLink returns — wait for it, then tap (don't race it).
+- extendedWaitUntil:
+    visible: "Open"
+    timeout: 30000
+- tapOn: "Open"
 # Wait for the Briefly login screen (Render cold start can take ~60s).
 - extendedWaitUntil:
     visible: "Continue with Google"
@@ -15,11 +17,14 @@ appId: host.exp.Exponent
     text: "^Continue$"
     optional: true
 - takeScreenshot: artifacts/10-login-screen
-# --- Sign in with the QA test account ---
-- tapOn: "you@example.com"
+# --- Sign in with the QA test account. Target inputs by their field labels
+# (the TextInputs have no testID; the bullet password placeholder is unmatchable). ---
+- tapOn:
+    below: "Email"
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
-- tapOn: "••••••••"
+- tapOn:
+    below: "Password"
 - inputText: ${TEST_PASSWORD}
 - hideKeyboard
 - takeScreenshot: artifacts/11-credentials-entered
