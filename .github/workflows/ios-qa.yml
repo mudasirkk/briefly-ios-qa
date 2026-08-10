@@ -34,13 +34,14 @@ jobs:
         run: |
           curl -fsSL -o expogo.tar.gz \
             https://github.com/expo/expo-go-releases/releases/download/Expo-Go-54.0.7/Expo-Go-54.0.7.tar.gz
-          mkdir -p expogo && tar -xzf expogo.tar.gz -C expogo
-          APP=$(find expogo -type d -name "*.app" | head -1)
-          if [ -z "$APP" ]; then
-            echo "No .app bundle found in tarball; contents:"
-            find expogo -maxdepth 4 | head -50
-            exit 1
-          fi
+          # The tarball is the .app bundle's CONTENTS (no wrapping dir) —
+          # extract into a directory named like an app bundle.
+          APP="expogo/ExpoGo.app"
+          mkdir -p "$APP" && tar -xzf expogo.tar.gz -C "$APP"
+          # If it actually contained a nested .app, prefer that instead.
+          NESTED=$(find "$APP" -mindepth 1 -type d -name "*.app" | head -1)
+          [ -n "$NESTED" ] && APP="$NESTED"
+          test -f "$APP/Info.plist" || { echo "No Info.plist at $APP root"; find expogo -maxdepth 2 | head -30; exit 1; }
           echo "Installing $APP"
           xcrun simctl install "$UDID" "$APP"
 
