@@ -1,0 +1,77 @@
+name: iOS QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      flow:
+        description: "Maestro flow file (or folder) to run"
+        default: flows/smoke.yaml
+      channel:
+        description: "EAS update channel to load in Expo Go"
+        default: preview
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ios-qa:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      EXPO_DEEP_LINK: exp://u.expo.dev/6f8190b1-041d-46c8-a900-8a4e94422c3c?channel-name=${{ inputs.channel }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Boot iPhone simulator
+        run: |
+          UDID=$(xcrun simctl create qa-iphone "iPhone 16" 2>/dev/null || xcrun simctl create qa-iphone "iPhone 15")
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+
+      - name: Install Expo Go (SDK 54)
+        run: |
+          curl -fsSL -o expogo.tar.gz \
+            https://github.com/expo/expo-go-releases/releases/download/Expo-Go-54.0.7/Expo-Go-54.0.7.tar.gz
+          mkdir -p expogo && tar -xzf expogo.tar.gz -C expogo
+          APP=$(find expogo -maxdepth 3 -name "*.app" -type d | head -1)
+          echo "Installing $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Start video recording
+        run: |
+          mkdir -p artifacts
+          xcrun simctl io "$UDID" recordVideo --codec h264 artifacts/session.mp4 &
+          echo $! > video.pid
+
+      - name: Run Maestro flows
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          maestro test "${{ inputs.flow }}" \
+            --env DEEP_LINK="$EXPO_DEEP_LINK" \
+            --env TEST_EMAIL="$TEST_EMAIL" \
+            --env TEST_PASSWORD="$TEST_PASSWORD" \
+            --debug-output artifacts/maestro
+
+      - name: Stop video recording
+        if: always()
+        run: |
+          kill -INT "$(cat video.pid)" 2>/dev/null || true
+          sleep 5
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-qa-artifacts
+          path: artifacts/
+          if-no-files-found: warn

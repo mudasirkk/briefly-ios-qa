@@ -1,0 +1,10 @@
+appId: host.exp.Exponent
+---
+# Boot Expo Go straight into the Briefly preview update.
+- openLink: ${DEEP_LINK}
+# Expo Go fetches the update, then the app hits the Render backend
+# (free dyno cold start can take ~60s, hence the long timeout).
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 150000
+- takeScreenshot: artifacts/01-login-screen
