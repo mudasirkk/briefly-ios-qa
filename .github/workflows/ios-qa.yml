@@ -75,18 +75,39 @@ jobs:
           xcrun simctl io "$UDID" recordVideo --codec h264 artifacts/session.mp4 &
           echo $! > video.pid
 
-      - name: Run Maestro flows
+      - name: Mint QA session (Supabase password grant)
         env:
-          MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
         run: |
-          # Lengths only (values are secret-masked) — proves the env reached us.
-          echo "creds: email_len=${#TEST_EMAIL} pass_len=${#TEST_PASSWORD}"
+          # Mint a real session for the QA test account (same grant the app uses).
+          # The app's QaAuthGate consumes these tokens from the launch URL and
+          # calls setSession — logging in without automating the fragile form.
+          resp=$(curl -sS -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
+          AT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
+          RT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('refresh_token',''))")
+          if [ -z "$AT" ] || [ -z "$RT" ]; then
+            echo "mint failed: $(printf '%s' "$resp" | head -c 300)"; exit 1
+          fi
+          echo "::add-mask::$AT"
+          echo "::add-mask::$RT"
+          echo "QA_AT=$AT" >> "$GITHUB_ENV"
+          echo "QA_RT=$RT" >> "$GITHUB_ENV"
+          echo "minted QA session: at_len=${#AT} rt_len=${#RT}"
+
+      - name: Run Maestro flows
+        env:
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
+        run: |
           maestro test "${{ inputs.flow }}" \
             --env DEEP_LINK="$EXPO_DEEP_LINK" \
-            --env TEST_EMAIL="$TEST_EMAIL" \
-            --env TEST_PASSWORD="$TEST_PASSWORD" \
+            --env QA_AT="$QA_AT" \
+            --env QA_RT="$QA_RT" \
             --debug-output artifacts/maestro
 
       - name: Stop video recording

@@ -1,65 +1,37 @@
 appId: host.exp.Exponent
 ---
-# Boot Expo Go into the Briefly preview update. Both openLink and the iOS
-# 'Open in "Expo Go"?' confirmation dialog are intermittently slow/absent in CI
-# (some launches never bring the app forward at all), so retry the open until
-# the login screen actually appears rather than assuming one shot works. The
-# optional "Open" tap dismisses the dialog when it is present and is skipped
-# when it is not.
+# QA session injection (bypasses the login form entirely).
+#
+# The app's QaAuthGate (active only when EXPO_PUBLIC_ENABLE_QA_AUTH=1, set in the
+# preview environment) reads `qa_at`/`qa_rt` from the launch URL and calls
+# supabase.auth.setSession — so opening the preview update with the freshly-minted
+# tokens logs the QA account straight in, and the root guard routes to /now.
+#
+# openLink + the iOS 'Open in Expo Go?' dialog are intermittently slow/absent in
+# CI, so retry the open until the app's JS is up (login screen text appears under
+# the dev-menu sheet before injection routes away).
 - repeat:
     times: 5
     while:
       notVisible: "Continue with Google"
     commands:
-      - openLink: ${DEEP_LINK}
+      - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
       - tapOn:
           text: "Open"
           optional: true
       - waitForAnimationToEnd:
-          timeout: 10000
-# Authoritative wait for the login screen JS to finish loading (bundle download
-# + Render cold start can take ~60s on a cold runner).
-- extendedWaitUntil:
-    visible: "Continue with Google"
-    timeout: 150000
-# Expo Go's first-launch developer-menu sheet slides up OVER the login form.
-# It is a NATIVE overlay whose text/buttons are NOT in the accessibility tree,
-# so it can only be dismissed by a coordinate tap on its "Continue" button
-# (bottom-center). Let it finish animating in first.
+          timeout: 8000
+# Dismiss Expo Go's first-launch developer-menu sheet (native overlay; its
+# Continue button is bottom-center and not in the accessibility tree).
 - waitForAnimationToEnd:
-    timeout: 5000
+    timeout: 4000
 - tapOn:
     point: "50%,92%"
 - waitForAnimationToEnd:
     timeout: 3000
-# Confirm the sheet is gone and the real form is reachable before proceeding.
-- assertVisible: "Email"
-- takeScreenshot: artifacts/10-login-screen
-# --- Sign in with the QA test account. Fields are targeted by testID (added to
-# the app's TextInputs) so identity — not pixel position — selects them. This is
-# immune to the KeyboardAvoidingView layout shift that made coordinate taps land
-# in the wrong field. Tap → settle → type, per field, verifying each. ---
-- waitForAnimationToEnd:
-    timeout: 3000
-- tapOn:
-    id: "loginEmail"
-- waitForAnimationToEnd:
-    timeout: 2000
-- inputText: ${TEST_EMAIL}
-- takeScreenshot: artifacts/11a-email
-- tapOn:
-    id: "loginPassword"
-- waitForAnimationToEnd:
-    timeout: 2000
-- inputText: ${TEST_PASSWORD}
-- takeScreenshot: artifacts/11b-password
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 2000
-- takeScreenshot: artifacts/11-credentials-entered
-- tapOn: "Sign in"
-# Landing screen after auth is the Briefs (/now) feed tab.
+- takeScreenshot: artifacts/10-post-inject
+# QaAuthGate sets the session and the guard routes to the Briefs (/now) tab.
 - extendedWaitUntil:
     visible: "Briefs"
-    timeout: 120000
+    timeout: 150000
 - takeScreenshot: artifacts/12-logged-in
