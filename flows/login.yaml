@@ -7,25 +7,26 @@ appId: host.exp.Exponent
 # supabase.auth.setSession — so opening the preview update with the freshly-minted
 # tokens logs the QA account straight in, and the root guard routes to /now.
 #
-# CRITICAL: open exactly ONCE. Repeated opens shake Expo Go into its runtime dev
-# menu (Reload / Go Home) — a NATIVE overlay that hides the whole RN tree from
-# Maestro, so even a fully-loaded feed reads as "not visible". One open avoids it.
+# Open exactly ONCE: repeated opens shake Expo Go into its runtime dev menu, a
+# native overlay that hides the RN tree from Maestro.
 - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
-# iOS 'Open in "Expo Go"?' confirmation — tap it when present (waits internally),
-# skipped if the launch went straight through.
 - tapOn:
     text: "Open"
     optional: true
-# Injection routes to the Briefs (/now) feed. "For you" sits at the top, visible
-# to Maestro above Expo Go's first-launch dev-menu SHEET (which only covers the
-# lower half — unlike the runtime menu, it does not hide the RN tree).
+# Expo Go's first-launch dev-menu SHEET is a NATIVE modal — while it's up, Maestro
+# cannot see any RN element beneath it (so "For you" reads invisible). Its buttons
+# ARE native, though, so wait for its "Continue" (EXACT match, never the login
+# screen's "Continue with Google") and tap it to dismiss. Injection has already
+# logged in behind the sheet; dismissing it reveals the feed.
 - extendedWaitUntil:
-    visible: "For you"
-    timeout: 150000
-# Dismiss that first-launch sheet via its Continue button (bottom-center; native
-# overlay, not in the a11y tree) so the tab bar below it becomes tappable.
+    visible:
+      text: "^Continue$"
+    timeout: 90000
 - tapOn:
-    point: "50%,92%"
+    text: "^Continue$"
 - waitForAnimationToEnd:
     timeout: 3000
+- extendedWaitUntil:
+    visible: "For you"
+    timeout: 90000
 - takeScreenshot: artifacts/12-logged-in
