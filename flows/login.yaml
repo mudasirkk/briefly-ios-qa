@@ -8,14 +8,18 @@ appId: host.exp.Exponent
     visible: "Open"
     timeout: 30000
 - tapOn: "Open"
-# Wait for the Briefly login screen (Render cold start can take ~60s).
+# Wait for the Briefly login screen JS to load (Render cold start can take ~60s).
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 150000
-# Dismiss Expo Go's first-launch developer-menu intro sheet if present.
+# Expo Go's first-launch developer-menu sheet auto-opens OVER the login form
+# (covering Email/Password/Sign in). Wait for it, then dismiss via its Continue
+# button so the real form is reachable. `^Continue$` avoids "Continue with Google".
+- extendedWaitUntil:
+    visible: "This is the developer menu"
+    timeout: 25000
 - tapOn:
     text: "^Continue$"
-    optional: true
 - takeScreenshot: artifacts/10-login-screen
 # --- Sign in with the QA test account. Target inputs by their field labels
 # (the TextInputs have no testID; the bullet password placeholder is unmatchable). ---
