@@ -25,12 +25,13 @@ appId: host.exp.Exponent
 # Confirm the sheet is gone and the real form is reachable before proceeding.
 - assertVisible: "Email"
 - takeScreenshot: artifacts/10-login-screen
-# --- Sign in with the QA test account. Email field is targeted by its visible
-# placeholder; the password field's placeholder is bullet glyphs (unmatchable),
-# so it's tapped by a coordinate calibrated to the login layout. hideKeyboard
+# --- Sign in with the QA test account. Both fields are tapped by COORDINATE:
+# a placeholder-text tap does not reliably focus the RN TextInput (proven — the
+# email stayed empty while the coordinate-tapped password filled). hideKeyboard
 # between fields returns the KeyboardAvoidingView to its resting position so the
-# password coordinate stays valid. ---
-- tapOn: "you@example.com"
+# calibrated coordinates stay valid. ---
+- tapOn:
+    point: "50%,60%"
 - inputText: ${TEST_EMAIL}
 - hideKeyboard
 - waitForAnimationToEnd:
