@@ -3,10 +3,11 @@ appId: host.exp.Exponent
 # Log in (self-healing launch + testID field entry), then audit the Account page.
 - runFlow: login.yaml
 
-# --- Reach the Account page: Home tab -> avatar (top-right) ---
+# --- Reach the Account page: the avatar lives on the HOME tab, but injection
+# lands on Briefs (/now). Switch to Home with an EXACT match (^Home$ avoids the
+# dev menu's "Go Home"), then tap the avatar (top-right). ---
 - tapOn:
-    text: "Home"
-    optional: true
+    text: "^Home$"
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: artifacts/20-home

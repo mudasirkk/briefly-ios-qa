@@ -7,13 +7,13 @@ appId: host.exp.Exponent
 # supabase.auth.setSession — so opening the preview update with the freshly-minted
 # tokens logs the QA account straight in, and the root guard routes to /now.
 #
-# openLink + the iOS 'Open in Expo Go?' dialog are intermittently slow/absent in
-# CI, so retry the open until the app's JS is up (login screen text appears under
-# the dev-menu sheet before injection routes away).
+# Key the retry on a FEED element ("For you"), so a successful injection stops the
+# loop after ONE open. (Repeated opens were shaking Expo Go into its runtime dev
+# menu — the source of the "Go Home" mis-tap that ejected the app.)
 - repeat:
-    times: 5
+    times: 6
     while:
-      notVisible: "Continue with Google"
+      notVisible: "For you"
     commands:
       - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
       - tapOn:
@@ -21,17 +21,16 @@ appId: host.exp.Exponent
           optional: true
       - waitForAnimationToEnd:
           timeout: 8000
-# Dismiss Expo Go's first-launch developer-menu sheet (native overlay; its
-# Continue button is bottom-center and not in the accessibility tree).
+# The feed is up (injection routed to /now; "For you" shows above any overlay).
+# Expo Go's first-launch dev-menu sheet may still cover the lower half — dismiss
+# via its Continue button (bottom-center; native overlay, not in the a11y tree).
 - waitForAnimationToEnd:
-    timeout: 4000
+    timeout: 3000
 - tapOn:
     point: "50%,92%"
 - waitForAnimationToEnd:
     timeout: 3000
-- takeScreenshot: artifacts/10-post-inject
-# QaAuthGate sets the session and the guard routes to the Briefs (/now) tab.
 - extendedWaitUntil:
-    visible: "Briefs"
-    timeout: 150000
+    visible: "For you"
+    timeout: 60000
 - takeScreenshot: artifacts/12-logged-in
