@@ -1,14 +1,24 @@
 appId: host.exp.Exponent
 ---
-# Boot Expo Go straight into the Briefly preview update.
-- openLink: ${DEEP_LINK}
-# iOS confirms custom-scheme links with an 'Open in "Expo Go"?' dialog that
-# appears a beat AFTER openLink returns — wait for it, then tap (don't race it).
-- extendedWaitUntil:
-    visible: "Open"
-    timeout: 30000
-- tapOn: "Open"
-# Wait for the Briefly login screen JS to load (Render cold start can take ~60s).
+# Boot Expo Go into the Briefly preview update. Both openLink and the iOS
+# 'Open in "Expo Go"?' confirmation dialog are intermittently slow/absent in CI
+# (some launches never bring the app forward at all), so retry the open until
+# the login screen actually appears rather than assuming one shot works. The
+# optional "Open" tap dismisses the dialog when it is present and is skipped
+# when it is not.
+- repeat:
+    times: 5
+    while:
+      notVisible: "Continue with Google"
+    commands:
+      - openLink: ${DEEP_LINK}
+      - tapOn:
+          text: "Open"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 10000
+# Authoritative wait for the login screen JS to finish loading (bundle download
+# + Render cold start can take ~60s on a cold runner).
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 150000
