@@ -52,9 +52,15 @@ jobs:
 
       - name: Install idb + cloudflared
         run: |
-          brew install idb-companion cloudflared
-          python3 -m pip install --break-system-packages fb-idb || pip3 install fb-idb || python3 -m pip install --user fb-idb
+          brew install cloudflared
+          brew tap facebook/fb
+          brew install idb-companion
+          python3 -m pip install --break-system-packages fb-idb \
+            || python3 -m pip install --user fb-idb
+          echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
           idb --version || true
+          cloudflared --version || true
 
       - name: Start idb companion
         run: |
