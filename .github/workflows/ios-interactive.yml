@@ -107,6 +107,7 @@ jobs:
           sleep 3
           cat /tmp/control.log || true
 
+          RDV="${{ inputs.rendezvous }}"
           # Verify a candidate public URL actually serves /health from the runner.
           verify() {
             for i in $(seq 1 12); do
@@ -114,52 +115,50 @@ jobs:
               [ "$code" = "200" ] && return 0
               sleep 3
             done
-            echo "  (last code=$code)"; return 1
+            return 1
           }
-
-          URL=""
-          # --- Provider 1: localhost.run (SSH remote-forward, no account) ---
-          for attempt in 1 2; do
-            pkill -f "ssh .*localhost.run" || true
-            : > /tmp/lhr.log
-            nohup ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-              -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes \
-              -R 80:127.0.0.1:8788 nokey@localhost.run >/tmp/lhr.log 2>&1 &
-            U=""
-            for i in $(seq 1 30); do
-              U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.lhr\.life" /tmp/lhr.log 2>/dev/null || true)
-              [ -n "$U" ] && break
-              sleep 2
+          # Bring up a verified tunnel; echoes the URL on success. localhost.run
+          # (SSH, no account) first, cloudflared quick tunnel as fallback.
+          bring_up() {
+            local U=""
+            for attempt in 1 2; do
+              pkill -f "ssh .*localhost.run" 2>/dev/null || true
+              : > /tmp/lhr.log
+              nohup ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes \
+                -R 80:127.0.0.1:8788 nokey@localhost.run >/tmp/lhr.log 2>&1 &
+              U=""
+              for i in $(seq 1 25); do
+                U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.lhr\.life" /tmp/lhr.log 2>/dev/null || true)
+                [ -n "$U" ] && break; sleep 2
+              done
+              [ -n "$U" ] && verify "$U" && { echo "$U"; return 0; }
             done
-            [ -z "$U" ] && { echo "lhr attempt $attempt: no URL"; tail -5 /tmp/lhr.log; continue; }
-            echo "lhr attempt $attempt: got $U, verifying..."
-            verify "$U" && { URL="$U"; break; } || echo "lhr $U never served"
-          done
-          # --- Provider 2: cloudflared quick tunnel (fallback) ---
-          if [ -z "$URL" ]; then
             for attempt in 1 2 3; do
-              pkill -f cloudflared || true
+              pkill -f cloudflared 2>/dev/null || true
               : > /tmp/cf.log
               nohup cloudflared tunnel --url http://127.0.0.1:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
               U=""
-              for i in $(seq 1 30); do
+              for i in $(seq 1 25); do
                 U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log 2>/dev/null || true)
-                [ -n "$U" ] && break
-                sleep 2
+                [ -n "$U" ] && break; sleep 2
               done
-              [ -z "$U" ] && continue
-              echo "cf attempt $attempt: got $U, verifying..."
-              verify "$U" && { URL="$U"; break; } || echo "cf $U never served"
+              [ -n "$U" ] && verify "$U" && { echo "$U"; return 0; }
             done
-          fi
-          if [ -z "$URL" ]; then echo "no working tunnel"; tail -20 /tmp/lhr.log /tmp/cf.log 2>/dev/null; exit 1; fi
-          echo "TUNNEL_READY $URL"
-          echo "::notice title=Interactive tunnel::$URL"
-          curl -s -H "Title: briefly-ios-tunnel" -d "$URL" "https://ntfy.sh/${{ inputs.rendezvous }}" >/dev/null || true
-          echo "published verified tunnel to ntfy"
-          # Keep the session alive.
+            return 1
+          }
+          publish() { curl -s -H "Title: briefly-ios-tunnel" -d "$1" "https://ntfy.sh/$RDV" >/dev/null || true; }
+
+          URL="$(bring_up)" || { echo "no working tunnel"; exit 1; }
+          echo "TUNNEL_READY $URL"; publish "$URL"; echo "published $URL"
+
+          # Supervisor: keep alive AND self-heal. If the tunnel stops serving,
+          # rebuild it and republish the new URL to ntfy (the driver re-polls).
           END=$(( $(date +%s) + ${{ inputs.minutes }} * 60 ))
           while [ "$(date +%s)" -lt "$END" ]; do
-            sleep 30
-            echo "alive $(date +%H:%M:%S) $URL"
+            sleep 25
+            if ! verify "$URL" >/dev/null 2>&1; then
+              echo "tunnel down; rebuilding..."
+              NEW="$(bring_up)" && { URL="$NEW"; publish "$URL"; echo "re-published $URL"; } || echo "rebuild failed; will retry"
+            fi
           done
