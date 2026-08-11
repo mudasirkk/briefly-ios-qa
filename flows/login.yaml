@@ -12,21 +12,25 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Open"
     optional: true
-# Wait for the bundle to load, injection to run, and Expo Go's first-launch
-# dev-menu SHEET to settle. waitForAnimationToEnd returns once the screen is
-# static — i.e. loading finished and the sheet is fully up.
 - waitForAnimationToEnd:
-    timeout: 25000
-# Dismiss that native sheet with a SINGLE coordinate tap on its Continue button
-# (bottom-center). It renders Maestro's hierarchy empty, so this is blind — but
-# ONE tap only: repeated taps drift onto the runtime menu's "Go Home" and eject
-# the app to SpringBoard.
-- tapOn:
-    point: "50%,92%"
-- waitForAnimationToEnd:
-    timeout: 5000
-# Sheet gone -> injection has already routed to the Briefs (/now) feed.
+    timeout: 10000
+# Expo Go's first-launch dev-menu SHEET renders Maestro's hierarchy empty while
+# up (only "Expo Go" / "Back to Home" are visible). Its Continue button is
+# bottom-center and blind (not in the tree). Tap it until the tab bar's "Home"
+# label appears — i.e. the sheet is gone and the RN tree is readable. The loop
+# STOPS the instant "Home" is visible, so only ~1 effective tap lands; that is
+# what keeps it off the runtime menu's "Go Home" (the earlier eject was a loop
+# that never stopped because it keyed on the wrong string).
+- repeat:
+    times: 4
+    while:
+      notVisible: "Home"
+    commands:
+      - tapOn:
+          point: "50%,92%"
+      - waitForAnimationToEnd:
+          timeout: 6000
 - extendedWaitUntil:
-    visible: "For you"
+    visible: "Home"
     timeout: 90000
 - takeScreenshot: artifacts/12-logged-in
