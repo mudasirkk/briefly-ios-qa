@@ -114,10 +114,10 @@ jobs:
           for attempt in 1 2 3 4 5; do
             pkill -f cloudflared || true
             : > /tmp/cf.log
-            nohup cloudflared tunnel --url http://localhost:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
+            nohup cloudflared tunnel --url http://127.0.0.1:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
             U=""
             for i in $(seq 1 30); do
-              U=$(grep -m1 -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log 2>/dev/null || true)
+              U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log 2>/dev/null || true)
               [ -n "$U" ] && break
               sleep 2
             done
