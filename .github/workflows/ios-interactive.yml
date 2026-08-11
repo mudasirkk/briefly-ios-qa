@@ -10,6 +10,9 @@ on:
       minutes:
         description: "How long to keep the session alive"
         default: "120"
+      rendezvous:
+        description: "ntfy.sh topic to publish the tunnel URL to"
+        required: true
 
 defaults:
   run:
@@ -99,13 +102,14 @@ jobs:
             sleep 2
           done
           if [ -z "$URL" ]; then echo "no tunnel URL"; tail -40 /tmp/cf.log; exit 1; fi
-          echo "=================================================="
           echo "TUNNEL_READY $URL"
           echo "::notice title=Interactive tunnel::$URL"
-          echo "=================================================="
           # Sanity: hit /health through the tunnel.
           sleep 2
           curl -s -H "X-Token: $INTERACTIVE_TOKEN" "$URL/health" && echo
+          # Publish the URL to the caller's ntfy topic so it can be read while the
+          # job is still running (in-progress step logs aren't retrievable).
+          curl -s -H "Title: briefly-ios-tunnel" -d "$URL" "https://ntfy.sh/${{ inputs.rendezvous }}" >/dev/null && echo "published to ntfy"
           # Keep the session alive.
           END=$(( $(date +%s) + ${{ inputs.minutes }} * 60 ))
           while [ "$(date +%s)" -lt "$END" ]; do
