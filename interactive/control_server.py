@@ -20,6 +20,9 @@ UDID = os.environ.get("UDID", "booted")
 TOKEN = os.environ.get("INTERACTIVE_TOKEN", "")
 SCALE = float(os.environ.get("SCALE", "3.0"))
 PORT = int(os.environ.get("PORT", "8788"))
+# fb-idb's CLI breaks under Python 3.14 (asyncio.get_event_loop raises), so it is
+# installed in a 3.11 venv; point IDB at that binary.
+IDB = os.environ.get("IDB", "idb")
 
 
 def run(cmd, timeout=60):
@@ -88,7 +91,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/describe":
             # Accessibility tree with element frames (in points) — find any element
             # and tap its center precisely, no coordinate guessing.
-            r = run(["idb", "ui", "describe-all", "--udid", UDID])
+            r = run([IDB, "ui", "describe-all", "--udid", UDID])
             self.send_response(200 if r.returncode == 0 else 500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -105,22 +108,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if path == "/tap":
                 x = float(b["x"]) / SCALE
                 y = float(b["y"]) / SCALE
-                return self._reply_result(run(["idb", "ui", "tap", "--udid", UDID, str(x), str(y)]))
+                return self._reply_result(run([IDB, "ui", "tap", "--udid", UDID, str(x), str(y)]))
             if path == "/text":
-                return self._reply_result(run(["idb", "ui", "text", "--udid", UDID, str(b["text"])]))
+                return self._reply_result(run([IDB, "ui", "text", "--udid", UDID, str(b["text"])]))
             if path == "/swipe":
                 x1 = float(b["x1"]) / SCALE
                 y1 = float(b["y1"]) / SCALE
                 x2 = float(b["x2"]) / SCALE
                 y2 = float(b["y2"]) / SCALE
                 dur = str(b.get("duration", 0.3))
-                return self._reply_result(run(["idb", "ui", "swipe", "--udid", UDID, "--duration", dur, str(x1), str(y1), str(x2), str(y2)]))
+                return self._reply_result(run([IDB, "ui", "swipe", "--udid", UDID, "--duration", dur, str(x1), str(y1), str(x2), str(y2)]))
             if path == "/openurl":
                 return self._reply_result(run(["xcrun", "simctl", "openurl", UDID, str(b["url"])]))
             if path == "/appearance":
                 return self._reply_result(run(["xcrun", "simctl", "ui", UDID, "appearance", str(b.get("value", "light"))]))
             if path == "/button":
-                return self._reply_result(run(["idb", "ui", "button", "--udid", UDID, str(b.get("name", "HOME"))]))
+                return self._reply_result(run([IDB, "ui", "button", "--udid", UDID, str(b.get("name", "HOME"))]))
         except KeyError as e:
             return self._reply({"error": f"missing field {e}"}, 400)
         except Exception as e:
