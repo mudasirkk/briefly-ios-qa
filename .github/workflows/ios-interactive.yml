@@ -1,0 +1,114 @@
+name: iOS Interactive
+
+# A long-running session: boots the iOS simulator, logs the QA account in via
+# session injection, then exposes a control server (screenshot/tap/describe) over
+# a free cloudflared tunnel so the driver can interact live. Cancel the run to end.
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How long to keep the session alive"
+        default: "120"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  interactive:
+    runs-on: macos-15
+    timeout-minutes: 350
+    env:
+      EXPO_DEEP_LINK: exp://u.expo.dev/6f8190b1-041d-46c8-a900-8a4e94422c3c?channel-name=preview
+      INTERACTIVE_TOKEN: ${{ secrets.INTERACTIVE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16 (iOS 18 sims — Expo Go SDK 54 needs them)
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Boot iPhone simulator
+        run: |
+          UDID=$(xcrun simctl create qa-iphone "iPhone 16" 2>/dev/null || xcrun simctl create qa-iphone "iPhone 15")
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+
+      - name: Install Expo Go (SDK 54)
+        run: |
+          curl -fsSL -o expogo.tar.gz \
+            https://github.com/expo/expo-go-releases/releases/download/Expo-Go-54.0.7/Expo-Go-54.0.7.tar.gz
+          APP="expogo/ExpoGo.app"
+          mkdir -p "$APP" && tar -xzf expogo.tar.gz -C "$APP"
+          test -f "$APP/Info.plist" || { echo "no Info.plist"; exit 1; }
+          xcrun simctl install "$UDID" "$APP"
+
+      - name: Install idb + cloudflared
+        run: |
+          brew install idb-companion cloudflared
+          python3 -m pip install --break-system-packages fb-idb || pip3 install fb-idb || python3 -m pip install --user fb-idb
+          idb --version || true
+
+      - name: Start idb companion
+        run: |
+          nohup idb_companion --udid "$UDID" --grpc-port 10882 >/tmp/idb_companion.log 2>&1 &
+          sleep 4
+          idb connect localhost 10882 || true
+          idb list-targets || true
+
+      - name: Mint QA session (Supabase password grant)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: |
+          resp=$(curl -sS -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
+          AT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
+          RT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('refresh_token',''))")
+          if [ -z "$AT" ] || [ -z "$RT" ]; then echo "mint failed: $(printf '%s' "$resp" | head -c 200)"; exit 1; fi
+          echo "::add-mask::$AT"; echo "::add-mask::$RT"
+          echo "QA_AT=$AT" >> "$GITHUB_ENV"; echo "QA_RT=$RT" >> "$GITHUB_ENV"
+          echo "minted QA session (at_len=${#AT})"
+
+      - name: Open the app (logged in via injection)
+        run: |
+          xcrun simctl openurl "$UDID" "$EXPO_DEEP_LINK&qa_at=$QA_AT&qa_rt=$QA_RT" || true
+          sleep 2
+
+      - name: Serve control API over a tunnel
+        env:
+          UDID: ${{ env.UDID }}
+          SCALE: "3.0"
+          PORT: "8788"
+        run: |
+          nohup python3 interactive/control_server.py >/tmp/control.log 2>&1 &
+          sleep 3
+          cat /tmp/control.log || true
+          nohup cloudflared tunnel --url http://localhost:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
+          URL=""
+          for i in $(seq 1 40); do
+            URL=$(grep -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log | head -1)
+            [ -n "$URL" ] && break
+            sleep 2
+          done
+          if [ -z "$URL" ]; then echo "no tunnel URL"; tail -40 /tmp/cf.log; exit 1; fi
+          echo "=================================================="
+          echo "TUNNEL_READY $URL"
+          echo "::notice title=Interactive tunnel::$URL"
+          echo "=================================================="
+          # Sanity: hit /health through the tunnel.
+          sleep 2
+          curl -s -H "X-Token: $INTERACTIVE_TOKEN" "$URL/health" && echo
+          # Keep the session alive.
+          END=$(( $(date +%s) + ${{ inputs.minutes }} * 60 ))
+          while [ "$(date +%s)" -lt "$END" ]; do
+            sleep 30
+            echo "alive $(date +%H:%M:%S) $URL"
+          done
