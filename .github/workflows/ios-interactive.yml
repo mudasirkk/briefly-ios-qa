@@ -106,32 +106,53 @@ jobs:
           nohup python3 interactive/control_server.py >/tmp/control.log 2>&1 &
           sleep 3
           cat /tmp/control.log || true
-          # cloudflared quick tunnels are intermittently unroutable (IPv6-only /
-          # dead edge). Only publish a URL that is VERIFIED serving /health from
-          # the runner; if a tunnel doesn't serve, restart cloudflared for a fresh
-          # edge and try again.
+
+          # Verify a candidate public URL actually serves /health from the runner.
+          verify() {
+            for i in $(seq 1 12); do
+              code=$(curl -s -m 8 -o /dev/null -w "%{http_code}" -H "X-Token: $INTERACTIVE_TOKEN" "$1/health" || true)
+              [ "$code" = "200" ] && return 0
+              sleep 3
+            done
+            echo "  (last code=$code)"; return 1
+          }
+
           URL=""
-          for attempt in 1 2 3 4 5; do
-            pkill -f cloudflared || true
-            : > /tmp/cf.log
-            nohup cloudflared tunnel --url http://127.0.0.1:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
+          # --- Provider 1: localhost.run (SSH remote-forward, no account) ---
+          for attempt in 1 2; do
+            pkill -f "ssh .*localhost.run" || true
+            : > /tmp/lhr.log
+            nohup ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes \
+              -R 80:127.0.0.1:8788 nokey@localhost.run >/tmp/lhr.log 2>&1 &
             U=""
             for i in $(seq 1 30); do
-              U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log 2>/dev/null || true)
+              U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.lhr\.life" /tmp/lhr.log 2>/dev/null || true)
               [ -n "$U" ] && break
               sleep 2
             done
-            [ -z "$U" ] && { echo "attempt $attempt: no URL yet"; continue; }
-            echo "attempt $attempt: got $U, verifying..."
-            for i in $(seq 1 12); do
-              code=$(curl -s -m 8 -o /dev/null -w "%{http_code}" -H "X-Token: $INTERACTIVE_TOKEN" "$U/health" || true)
-              if [ "$code" = "200" ]; then URL="$U"; break; fi
-              sleep 3
-            done
-            [ -n "$URL" ] && break
-            echo "attempt $attempt: $U never served (last code=$code); restarting cloudflared"
+            [ -z "$U" ] && { echo "lhr attempt $attempt: no URL"; tail -5 /tmp/lhr.log; continue; }
+            echo "lhr attempt $attempt: got $U, verifying..."
+            verify "$U" && { URL="$U"; break; } || echo "lhr $U never served"
           done
-          if [ -z "$URL" ]; then echo "no working tunnel"; tail -40 /tmp/cf.log; exit 1; fi
+          # --- Provider 2: cloudflared quick tunnel (fallback) ---
+          if [ -z "$URL" ]; then
+            for attempt in 1 2 3; do
+              pkill -f cloudflared || true
+              : > /tmp/cf.log
+              nohup cloudflared tunnel --url http://127.0.0.1:8788 --no-autoupdate >/tmp/cf.log 2>&1 &
+              U=""
+              for i in $(seq 1 30); do
+                U=$(grep -a -m1 -oE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/cf.log 2>/dev/null || true)
+                [ -n "$U" ] && break
+                sleep 2
+              done
+              [ -z "$U" ] && continue
+              echo "cf attempt $attempt: got $U, verifying..."
+              verify "$U" && { URL="$U"; break; } || echo "cf $U never served"
+            done
+          fi
+          if [ -z "$URL" ]; then echo "no working tunnel"; tail -20 /tmp/lhr.log /tmp/cf.log 2>/dev/null; exit 1; fi
           echo "TUNNEL_READY $URL"
           echo "::notice title=Interactive tunnel::$URL"
           curl -s -H "Title: briefly-ios-tunnel" -d "$URL" "https://ntfy.sh/${{ inputs.rendezvous }}" >/dev/null || true
