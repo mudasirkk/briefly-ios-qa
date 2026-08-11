@@ -7,27 +7,26 @@ appId: host.exp.Exponent
 # supabase.auth.setSession — so opening the preview update with the freshly-minted
 # tokens logs the QA account straight in, and the root guard routes to /now.
 #
-# Open exactly ONCE: repeated opens shake Expo Go into its runtime dev menu.
+# Open exactly ONCE (repeated opens shake up Expo Go's runtime dev menu).
 - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
 - tapOn:
     text: "Open"
     optional: true
-# Let injection load and Expo Go's first-launch dev-menu SHEET slide up.
+# Wait for the bundle to load, injection to run, and Expo Go's first-launch
+# dev-menu SHEET to settle. waitForAnimationToEnd returns once the screen is
+# static — i.e. loading finished and the sheet is fully up.
 - waitForAnimationToEnd:
-    timeout: 12000
-# That sheet is a NATIVE modal that renders Maestro's whole hierarchy empty while
-# it's up — no text (native or RN) is matchable, so it can only be dismissed
-# blind, by coordinate (its Continue button is bottom-center). Tap Continue until
-# the feed's "For you" becomes visible (= sheet gone, RN tree readable again).
-# This loop only TAPS — it never re-opens the link — so it can't trigger the
-# runtime dev menu.
-- repeat:
-    times: 8
-    while:
-      notVisible: "For you"
-    commands:
-      - tapOn:
-          point: "50%,92%"
-      - waitForAnimationToEnd:
-          timeout: 5000
+    timeout: 25000
+# Dismiss that native sheet with a SINGLE coordinate tap on its Continue button
+# (bottom-center). It renders Maestro's hierarchy empty, so this is blind — but
+# ONE tap only: repeated taps drift onto the runtime menu's "Go Home" and eject
+# the app to SpringBoard.
+- tapOn:
+    point: "50%,92%"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Sheet gone -> injection has already routed to the Briefs (/now) feed.
+- extendedWaitUntil:
+    visible: "For you"
+    timeout: 90000
 - takeScreenshot: artifacts/12-logged-in
