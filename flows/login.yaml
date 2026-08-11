@@ -14,22 +14,21 @@ appId: host.exp.Exponent
     optional: true
 - waitForAnimationToEnd:
     timeout: 10000
-# Expo Go's first-launch dev-menu SHEET renders Maestro's hierarchy empty while
-# up (only "Expo Go" / "Back to Home" are visible). Its Continue button is
-# bottom-center and blind (not in the tree). Tap it until the tab bar's "Home"
-# label appears — i.e. the sheet is gone and the RN tree is readable. The loop
-# STOPS the instant "Home" is visible, so only ~1 effective tap lands; that is
-# what keeps it off the runtime menu's "Go Home" (the earlier eject was a loop
-# that never stopped because it keyed on the wrong string).
+# Expo Go's dev-menu overlay covers the app and renders Maestro's hierarchy empty
+# while up. Dismiss it with its X CLOSE button (top-right ~93%,52%) — NOT the
+# "Continue" button, which merely ADVANCES the intro sheet INTO the Reload/Go Home
+# menu (and a stray tap there hits "Go Home" and ejects the app to SpringBoard).
+# The X is blind (native overlay, not in the tree); loop it until the tab bar's
+# "Home" label appears, then stop (so at most ~1 effective tap lands).
 - repeat:
-    times: 4
+    times: 3
     while:
       notVisible: "Home"
     commands:
       - tapOn:
-          point: "50%,92%"
+          point: "93%,52%"
       - waitForAnimationToEnd:
-          timeout: 6000
+          timeout: 5000
 - extendedWaitUntil:
     visible: "Home"
     timeout: 90000
