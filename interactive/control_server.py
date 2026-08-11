@@ -106,16 +106,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         b = self._body()
         try:
             if path == "/tap":
-                x = float(b["x"]) / SCALE
-                y = float(b["y"]) / SCALE
+                # idb wants INTEGER points; screenshots are pixels, so ÷SCALE and round.
+                x = int(round(float(b["x"]) / SCALE))
+                y = int(round(float(b["y"]) / SCALE))
                 return self._reply_result(run([IDB, "ui", "tap", "--udid", UDID, str(x), str(y)]))
             if path == "/text":
                 return self._reply_result(run([IDB, "ui", "text", "--udid", UDID, str(b["text"])]))
             if path == "/swipe":
-                x1 = float(b["x1"]) / SCALE
-                y1 = float(b["y1"]) / SCALE
-                x2 = float(b["x2"]) / SCALE
-                y2 = float(b["y2"]) / SCALE
+                x1 = int(round(float(b["x1"]) / SCALE))
+                y1 = int(round(float(b["y1"]) / SCALE))
+                x2 = int(round(float(b["x2"]) / SCALE))
+                y2 = int(round(float(b["y2"]) / SCALE))
                 dur = str(b.get("duration", 0.3))
                 return self._reply_result(run([IDB, "ui", "swipe", "--udid", UDID, "--duration", dur, str(x1), str(y1), str(x2), str(y2)]))
             if path == "/openurl":
