@@ -121,6 +121,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._reply_result(run([IDB, "ui", "swipe", "--udid", UDID, "--duration", dur, str(x1), str(y1), str(x2), str(y2)]))
             if path == "/openurl":
                 return self._reply_result(run(["xcrun", "simctl", "openurl", UDID, str(b["url"])]))
+            if path == "/reload":
+                # Force a COLD reload of Expo Go so it fetches the latest published
+                # EAS update (a warm openurl reuses the cached bundle). Terminate,
+                # then open the deep link.
+                run(["xcrun", "simctl", "terminate", UDID, "host.exp.Exponent"])
+                import time as _t
+                _t.sleep(2)
+                return self._reply_result(run(["xcrun", "simctl", "openurl", UDID, str(b["url"])]))
             if path == "/appearance":
                 return self._reply_result(run(["xcrun", "simctl", "ui", UDID, "appearance", str(b.get("value", "light"))]))
             if path == "/button":
