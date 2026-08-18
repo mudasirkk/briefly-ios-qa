@@ -20,7 +20,10 @@ defaults:
 
 jobs:
   interactive:
-    runs-on: macos-15
+    # macos-14 (Sonoma) still ships Xcode 16 + the iOS 18 runtime Expo Go SDK 54
+    # needs; the macos-15 image dropped Xcode 16, so idb-companion (which needs a
+    # full Xcode selected) failed to install and the iOS 18 sim was unavailable.
+    runs-on: macos-14
     timeout-minutes: 350
     env:
       EXPO_DEEP_LINK: exp://u.expo.dev/6f8190b1-041d-46c8-a900-8a4e94422c3c?channel-name=preview
