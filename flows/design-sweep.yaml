@@ -50,47 +50,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 2000
 
-# --- 3 · Channel page (via the show capsule, a11y "View <show>"; the negative
-#         lookahead excludes the "View artifact: …" pill on the same card) ---
-- tapOn:
-    text: "View (?![Aa]rtifact).*"
-    optional: true
-# channel-page marker = the "Latest brief · N min" play pill; retry the capsule
-# tap once if the first tap didn't navigate
-- extendedWaitUntil:
-    visible: "Latest brief.*"
-    timeout: 6000
-    optional: true
-- runFlow:
-    when:
-      notVisible: "Latest brief.*"
-    commands:
-      - tapOn:
-          text: "View (?![Aa]rtifact).*"
-          optional: true
-      - waitForAnimationToEnd:
-          timeout: 5000
-- takeScreenshot: artifacts/20-channel-hero
-- scroll
-- takeScreenshot: artifacts/21-channel-mid
-- scroll
-- takeScreenshot: artifacts/22-channel-about
-- scroll
-- takeScreenshot: artifacts/23-channel-bottom
-# back to the tab shell via the labelled back control (channel header floats,
-# so scroll back up first); the edge-swipe gesture is banned — on a dead app it
-# just flips SpringBoard pages and hides the real failure
-- scrollUntilVisible:
-    element:
-      text: "^(Back|Go back)$"
-    direction: UP
-    timeout: 10000
-    optional: true
-- tapOn:
-    text: "^(Back|Go back)$"
-    optional: true
-- waitForAnimationToEnd:
-    timeout: 3000
+# --- 3 · (channel section moved to 9b: opening the channel page CRASHES the
+#         current preview bundle — run 32169728971 — so it runs late, where a
+#         crash costs only the channel + login stops, not the whole sweep) ---
 
 # --- 4 · Home tab (tab taps are optional: a failed stop should cost its own
 #         screenshots, not the rest of the sweep) ---
@@ -242,6 +204,60 @@ appId: host.exp.Exponent
 - takeScreenshot: artifacts/84-ob-ready
 - scroll
 - takeScreenshot: artifacts/85-ob-ready-grid
+# leave onboarding for the tab shell
+- tapOn:
+    text: "Start listening"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# --- 9b · Channel page (via the show capsule, a11y "View <show>"; negative
+#          lookahead excludes the "View artifact: …" pill). Runs LATE on
+#          purpose: opening the channel KILLED Expo Go on the 2026-08-18
+#          preview bundle (run 32169728971, filed as an app bug) — from here a
+#          crash costs only the channel + login stops. ---
+- tapOn:
+    text: "^Briefs$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    text: "View (?![Aa]rtifact).*"
+    optional: true
+# channel-page marker = the "Latest brief · N min" play pill; retry once if the
+# first tap didn't navigate
+- extendedWaitUntil:
+    visible: "Latest brief.*"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Latest brief.*"
+    commands:
+      - tapOn:
+          text: "View (?![Aa]rtifact).*"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 5000
+- takeScreenshot: artifacts/20-channel-hero
+- scroll
+- takeScreenshot: artifacts/21-channel-mid
+- scroll
+- takeScreenshot: artifacts/22-channel-about
+- scroll
+- takeScreenshot: artifacts/23-channel-bottom
+# back to the tab shell via the labelled back control (never the edge swipe)
+- scrollUntilVisible:
+    element:
+      text: "^(Back|Go back)$"
+    direction: UP
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "^(Back|Go back)$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
 
 # --- 10 · Login screen, LAST (log out; fresh sim each run + a new session is
 #          minted per run, so signing out costs nothing) ---
