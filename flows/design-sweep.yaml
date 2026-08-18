@@ -22,6 +22,12 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/10-now-player
+# pause playback AFTER the player shot — auto-advance swaps the card mid-sweep
+# and races later taps (run 32163668189: capsule tap landed during a card
+# transition and never navigated)
+- tapOn:
+    text: "^Pause$"
+    optional: true
 # a11y label of the rail's More button (tapping the bare "More" caption text
 # does not register on the pressable — validated 2026-08-18)
 - tapOn:
@@ -49,8 +55,21 @@ appId: host.exp.Exponent
 - tapOn:
     text: "View (?![Aa]rtifact).*"
     optional: true
-- waitForAnimationToEnd:
-    timeout: 5000
+# channel-page marker = the "Latest brief · N min" play pill; retry the capsule
+# tap once if the first tap didn't navigate
+- extendedWaitUntil:
+    visible: "Latest brief.*"
+    timeout: 6000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Latest brief.*"
+    commands:
+      - tapOn:
+          text: "View (?![Aa]rtifact).*"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 5000
 - takeScreenshot: artifacts/20-channel-hero
 - scroll
 - takeScreenshot: artifacts/21-channel-mid
