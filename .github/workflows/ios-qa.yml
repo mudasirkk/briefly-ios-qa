@@ -9,6 +9,9 @@ on:
       channel:
         description: "EAS update channel to load in Expo Go"
         default: preview
+      appearance:
+        description: "Simulator UI appearance (light or dark)"
+        default: light
 
 defaults:
   run:
@@ -39,6 +42,7 @@ jobs:
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID"
+          xcrun simctl ui "$UDID" appearance "${{ inputs.appearance || 'light' }}"
           xcrun simctl list devices | grep Booted
 
       - name: Install Expo Go (SDK 54)

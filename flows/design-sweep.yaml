@@ -1,0 +1,207 @@
+appId: host.exp.Exponent
+---
+# DESIGN SWEEP — walk every major screen of Briefly and screenshot each stop.
+# Consumed by the daily-design-diff routine: each numbered screenshot is compared
+# against the matching Claude Design screen by a verifier agent. Names are stable
+# API — the comparator maps on the NN-slug prefix; don't renumber casually.
+#
+# Robustness rules: navigation taps that depend on drifting UI are `optional: true`
+# and every stop screenshots whatever is actually on screen — a missing element
+# yields a wrong-looking screenshot (which the verifier flags) instead of a dead run.
+
+# --- 0 · Login screen (pre-injection look at the auth surface) ---
+- openLink: ${DEEP_LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 150000
+    optional: true
+- takeScreenshot: artifacts/00-login
+
+# --- 1 · Session injection (lands on Briefs /now) ---
+- runFlow: login.yaml
+
+# --- 2 · Now tab: player card + More sheet ---
+- tapOn:
+    text: "^Briefs$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/10-now-player
+- tapOn:
+    text: "^More$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: artifacts/11-now-more-sheet
+- swipe:
+    start: "50%,40%"
+    end: "50%,95%"
+- waitForAnimationToEnd:
+    timeout: 2000
+
+# --- 3 · Channel page (via the show capsule on the player) ---
+- tapOn:
+    text: "View .*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: artifacts/20-channel-hero
+- scroll
+- takeScreenshot: artifacts/21-channel-mid
+- scroll
+- takeScreenshot: artifacts/22-channel-about
+- scroll
+- takeScreenshot: artifacts/23-channel-bottom
+# back to the tab shell (iOS edge-swipe back)
+- swipe:
+    start: "2%,50%"
+    end: "85%,50%"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# --- 4 · Home tab ---
+- tapOn:
+    text: "^Home$"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/30-home-top
+- scroll
+- takeScreenshot: artifacts/31-home-mid
+- scroll
+- takeScreenshot: artifacts/32-home-bottom
+
+# --- 5 · Discover tab ---
+- tapOn:
+    text: "^Discover$"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/40-discover-top
+- scroll
+- takeScreenshot: artifacts/41-discover-mid
+- scroll
+- takeScreenshot: artifacts/42-discover-bottom
+
+# --- 6 · Search tab: empty state + live results ---
+- tapOn:
+    text: "^Search$"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/50-search-empty
+- tapOn:
+    text: "Search.*"
+    optional: true
+- inputText: "business"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: artifacts/51-search-results
+- hideKeyboard
+
+# --- 7 · Library tab ---
+- tapOn:
+    text: "^Library$"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/60-library-top
+- scroll
+- takeScreenshot: artifacts/61-library-scroll
+
+# --- 8 · Account (Home tab → avatar), then each tab-strip pane ---
+- tapOn:
+    text: "^Home$"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    text: "Profile and settings.*"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/70-account-top
+- tapOn:
+    text: "^Activity$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/71-account-activity
+- tapOn:
+    text: "^Saved$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/72-account-saved
+- tapOn:
+    text: "^Shows$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/73-account-shows
+- tapOn:
+    text: "^Stats$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: artifacts/74-account-stats
+- scroll
+- takeScreenshot: artifacts/75-account-scroll
+- scroll
+- takeScreenshot: artifacts/76-account-bottom
+
+# --- 9 · Onboarding (re-entry via Manage interests; the fresh first-run flow
+#         only exists pre-auth and OB-V2's in-flow auth is still landing) ---
+- scrollUntilVisible:
+    element:
+      text: "Manage interests"
+    direction: UP
+    timeout: 15000
+    optional: true
+- tapOn:
+    text: "Manage interests"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/80-ob-taste
+- tapOn:
+    text: "Business"
+    optional: true
+- tapOn:
+    text: "Technology"
+    optional: true
+- tapOn:
+    text: "Science"
+    optional: true
+- tapOn:
+    text: "Continue.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/81-ob-rhythm
+- tapOn:
+    text: "Continue.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/82-ob-next
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          text: "Keep this brief"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible: "Want your feed ready every morning?"
+    timeout: 25000
+    optional: true
+- takeScreenshot: artifacts/83-ob-permission
+- tapOn:
+    text: "Maybe later"
+    optional: true
+- extendedWaitUntil:
+    visible: ".*your feed is ready.*"
+    timeout: 20000
+    optional: true
+- takeScreenshot: artifacts/84-ob-ready
+- scroll
+- takeScreenshot: artifacts/85-ob-ready-grid
