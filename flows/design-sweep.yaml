@@ -30,11 +30,17 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 2500
 - takeScreenshot: artifacts/11-now-more-sheet
-# dismiss via the sheet's labelled close button — a blind downward swipe here
-# EJECTED Expo Go to SpringBoard (run 32160474956); never gesture-dismiss
-- tapOn:
-    text: "^Close .*"
-    optional: true
+# dismiss: the "Close More" control is the SCRIM (absolute-fill pressable) whose
+# center is covered by the sheet panel, so an element tap hits the panel instead
+# (run 32162106667). Tap a point in the visible scrim strip at the top — guarded
+# on the sheet's "THIS BRIEF" kicker so it only fires while the sheet is up.
+# (A blind downward swipe is banned: it ejected Expo Go, run 32160474956.)
+- runFlow:
+    when:
+      visible: "THIS BRIEF"
+    commands:
+      - tapOn:
+          point: "50%,8%"
 - waitForAnimationToEnd:
     timeout: 2000
 
