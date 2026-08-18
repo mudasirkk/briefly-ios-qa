@@ -66,8 +66,9 @@ appId: host.exp.Exponent
     timeout: 25000
     optional: true
 - takeScreenshot: artifacts/43-permission
+# The decline button reads "Maybe later" (RevealStep permission phase).
 - tapOn:
-    text: "Not now"
+    text: "Maybe later"
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
