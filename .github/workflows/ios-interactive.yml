@@ -32,16 +32,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select the full Xcode (idb-companion needs a full Xcode.app, not CLT)
+      - name: Select the newest Xcode for brew (idb-companion requires Xcode.app 26)
         run: |
-          # Prefer Xcode 16 if the image still has it (iOS 18 sims); otherwise
-          # select the newest full Xcode present (26 on macos-15). Never leave
-          # Command Line Tools selected — idb-companion won't compile against it.
-          XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
-          [ -z "$XCODE" ] && XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          # brew's idb-companion formula hard-requires a FULL Xcode 26 selected
+          # at install time. Select the newest Xcode now; a later step switches
+          # to Xcode 16 (iOS 18 sims — Expo Go SDK 54 crashes on iOS 26 runtimes)
+          # BEFORE the simulator is created/booted.
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
           [ -z "$XCODE" ] && XCODE=/Applications/Xcode.app
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
+
+      - name: Install idb + cloudflared
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+        run: |
+          brew install cloudflared python@3.11
+          brew tap facebook/fb
+          brew install idb-companion
+          # fb-idb's CLI raises under Python 3.14 (asyncio.get_event_loop removed),
+          # so install it into a dedicated 3.11 venv and expose that binary as IDB.
+          /opt/homebrew/opt/python@3.11/bin/python3.11 -m venv /tmp/idbvenv
+          /tmp/idbvenv/bin/pip install --quiet --upgrade pip
+          /tmp/idbvenv/bin/pip install --quiet fb-idb
+          echo "IDB=/tmp/idbvenv/bin/idb" >> "$GITHUB_ENV"
+          /tmp/idbvenv/bin/idb --version || true
+          cloudflared --version || true
+
+      - name: Select Xcode 16 for the simulator (iOS 18 runtimes)
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XCODE" ]; then sudo xcode-select -s "$XCODE"; fi
+          xcodebuild -version
+          xcrun simctl list runtimes | grep iOS || true
 
       - name: Boot iPhone simulator
         run: |
@@ -59,22 +82,6 @@ jobs:
           mkdir -p "$APP" && tar -xzf expogo.tar.gz -C "$APP"
           test -f "$APP/Info.plist" || { echo "no Info.plist"; exit 1; }
           xcrun simctl install "$UDID" "$APP"
-
-      - name: Install idb + cloudflared
-        env:
-          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
-        run: |
-          brew install cloudflared python@3.11
-          brew tap facebook/fb
-          brew install idb-companion
-          # fb-idb's CLI raises under Python 3.14 (asyncio.get_event_loop removed),
-          # so install it into a dedicated 3.11 venv and expose that binary as IDB.
-          /opt/homebrew/opt/python@3.11/bin/python3.11 -m venv /tmp/idbvenv
-          /tmp/idbvenv/bin/pip install --quiet --upgrade pip
-          /tmp/idbvenv/bin/pip install --quiet fb-idb
-          echo "IDB=/tmp/idbvenv/bin/idb" >> "$GITHUB_ENV"
-          /tmp/idbvenv/bin/idb --version || true
-          cloudflared --version || true
 
       - name: Start idb companion
         run: |
