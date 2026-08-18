@@ -9,18 +9,10 @@ appId: host.exp.Exponent
 # and every stop screenshots whatever is actually on screen — a missing element
 # yields a wrong-looking screenshot (which the verifier flags) instead of a dead run.
 
-# --- 0 · Login screen (pre-injection look at the auth surface) ---
-- openLink: ${DEEP_LINK}
-- tapOn:
-    text: "Open"
-    optional: true
-- extendedWaitUntil:
-    visible: "Continue with Google"
-    timeout: 150000
-    optional: true
-- takeScreenshot: artifacts/00-login
-
-# --- 1 · Session injection (lands on Briefs /now) ---
+# --- 1 · Session injection (lands on Briefs /now). The deep link must be opened
+#         exactly ONCE per run (a second open shakes up Expo Go's dev menu —
+#         validated the hard way 2026-08-18), so the login screen is captured at
+#         the END via log-out (section 10), not by a pre-injection open. ---
 - runFlow: login.yaml
 
 # --- 2 · Now tab: player card + More sheet ---
@@ -205,3 +197,36 @@ appId: host.exp.Exponent
 - takeScreenshot: artifacts/84-ob-ready
 - scroll
 - takeScreenshot: artifacts/85-ob-ready-grid
+
+# --- 10 · Login screen, LAST (log out; fresh sim each run + a new session is
+#          minted per run, so signing out costs nothing) ---
+- tapOn:
+    text: "^Home$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    text: "Profile and settings.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      text: "^Log out$"
+    direction: DOWN
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "^Log out$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+# the confirm dialog's destructive button is also labelled "Log out"
+- tapOn:
+    text: "^Log out$"
+    optional: true
+- extendedWaitUntil:
+    visible: "Continue with Google"
+    timeout: 30000
+    optional: true
+- takeScreenshot: artifacts/90-login
