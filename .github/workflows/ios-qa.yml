@@ -20,7 +20,7 @@ defaults:
 jobs:
   ios-qa:
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       EXPO_DEEP_LINK: exp://u.expo.dev/6f8190b1-041d-46c8-a900-8a4e94422c3c?channel-name=${{ inputs.channel }}
     steps:
