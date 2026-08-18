@@ -20,10 +20,11 @@ defaults:
 
 jobs:
   interactive:
-    # macos-14 (Sonoma) still ships Xcode 16 + the iOS 18 runtime Expo Go SDK 54
-    # needs; the macos-15 image dropped Xcode 16, so idb-companion (which needs a
-    # full Xcode selected) failed to install and the iOS 18 sim was unavailable.
-    runs-on: macos-14
+    # idb-companion's current Homebrew formula requires macOS 15 (Sequoia) + a
+    # FULL Xcode 26 selected (Command Line Tools is not enough, and macos-14
+    # can't install Xcode 26). So: macos-15, and the select step below points
+    # xcode-select at the full Xcode.app rather than the (dropped) Xcode 16.
+    runs-on: macos-15
     timeout-minutes: 350
     env:
       EXPO_DEEP_LINK: exp://u.expo.dev/6f8190b1-041d-46c8-a900-8a4e94422c3c?channel-name=preview
@@ -31,15 +32,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 16 (iOS 18 sims — Expo Go SDK 54 needs them)
+      - name: Select the full Xcode (idb-companion needs a full Xcode.app, not CLT)
         run: |
+          # Prefer Xcode 16 if the image still has it (iOS 18 sims); otherwise
+          # select the newest full Xcode present (26 on macos-15). Never leave
+          # Command Line Tools selected — idb-companion won't compile against it.
           XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
-          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE"
+          [ -z "$XCODE" ] && XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$XCODE" ] && XCODE=/Applications/Xcode.app
+          sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
       - name: Boot iPhone simulator
         run: |
-          UDID=$(xcrun simctl create qa-iphone "iPhone 16" 2>/dev/null || xcrun simctl create qa-iphone "iPhone 15")
+          # Use whatever iPhone device the selected Xcode's runtime provides.
+          UDID=$(xcrun simctl create qa-iphone "iPhone 16" 2>/dev/null || xcrun simctl create qa-iphone "iPhone 16 Pro" 2>/dev/null || xcrun simctl create qa-iphone "iPhone 15")
           echo "UDID=$UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID"
