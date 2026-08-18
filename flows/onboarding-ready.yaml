@@ -23,9 +23,20 @@ appId: host.exp.Exponent
     timeout: 4000
 - takeScreenshot: artifacts/40-taste
 
-# --- Taste (interests pre-picked on the QA account) → Continue ---
+# --- Taste: edit re-entry starts with nothing selected — pick 3, then Continue ---
 - tapOn:
-    text: "Continue"
+    text: "Business"
+    optional: true
+- tapOn:
+    text: "Technology"
+    optional: true
+- tapOn:
+    text: "Science"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    text: "Continue.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
@@ -33,7 +44,7 @@ appId: host.exp.Exponent
 
 # --- Rhythm → Continue ---
 - tapOn:
-    text: "Continue"
+    text: "Continue.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
