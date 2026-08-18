@@ -9,8 +9,15 @@ appId: host.exp.Exponent
 #
 # Open exactly ONCE (repeated opens shake up Expo Go's runtime dev menu).
 - openLink: ${DEEP_LINK}&qa_at=${QA_AT}&qa_rt=${QA_RT}
+# The 'Open in "Expo Go"?' dialog can appear SECONDS LATE on a fresh sim —
+# tapping immediately hits thin air and the untapped dialog then blocks the
+# whole run (observed 2026-08-18, run 32158871742). Wait for it first.
+- extendedWaitUntil:
+    visible: "^Open$"
+    timeout: 20000
+    optional: true
 - tapOn:
-    text: "Open"
+    text: "^Open$"
     optional: true
 - waitForAnimationToEnd:
     timeout: 10000
@@ -25,6 +32,11 @@ appId: host.exp.Exponent
     while:
       notVisible: "Home"
     commands:
+      # a late 'Open in "Expo Go"?' dialog wins over the blind X tap — only
+      # taps when the dialog actually exists
+      - tapOn:
+          text: "^Open$"
+          optional: true
       - tapOn:
           point: "93%,52%"
       - waitForAnimationToEnd:
@@ -41,6 +53,9 @@ appId: host.exp.Exponent
     while:
       notVisible: "Home"
     commands:
+      - tapOn:
+          text: "^Open$"
+          optional: true
       - tapOn:
           point: "93%,52%"
       - waitForAnimationToEnd:
