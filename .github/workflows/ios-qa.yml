@@ -105,6 +105,7 @@ jobs:
           echo "minted QA session: at_len=${#AT} rt_len=${#RT}"
 
       - name: Run Maestro flows
+        id: maestro
         env:
           MAESTRO_DRIVER_STARTUP_TIMEOUT: "120000"
         run: |
@@ -124,8 +125,23 @@ jobs:
         if: always()
         run: |
           mkdir -p artifacts/crashes
-          cp ~/Library/Logs/DiagnosticReports/*.ips artifacts/crashes/ 2>/dev/null || true
-          ls artifacts/crashes || true
+          # ReportCrash writes the .ips seconds AFTER the process dies, and
+          # reports can land in Retired/ or the system-wide directory — so on a
+          # failed flow, poll recursively for up to 60s before giving up.
+          # (Run 32169728971's channel crash produced no artifact because the
+          # old step did one non-recursive glob immediately.)
+          scan() {
+            find ~/Library/Logs/DiagnosticReports /Library/Logs/DiagnosticReports \
+              -type f \( -name '*.ips' -o -name '*.crash' \) 2>/dev/null
+          }
+          if [ "${{ steps.maestro.outcome }}" != "success" ]; then
+            for i in $(seq 1 12); do
+              [ -n "$(scan | head -1)" ] && break
+              sleep 5
+            done
+          fi
+          scan | while IFS= read -r f; do cp "$f" artifacts/crashes/ || true; done
+          ls -la artifacts/crashes || true
 
       - name: Upload artifacts
         if: always()
