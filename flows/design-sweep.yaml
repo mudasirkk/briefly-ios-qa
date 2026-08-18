@@ -22,21 +22,26 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/10-now-player
+# a11y label of the rail's More button (tapping the bare "More" caption text
+# does not register on the pressable — validated 2026-08-18)
 - tapOn:
-    text: "^More$"
+    text: "More options"
     optional: true
 - waitForAnimationToEnd:
     timeout: 2500
 - takeScreenshot: artifacts/11-now-more-sheet
-- swipe:
-    start: "50%,40%"
-    end: "50%,95%"
+# dismiss via the sheet's labelled close button — a blind downward swipe here
+# EJECTED Expo Go to SpringBoard (run 32160474956); never gesture-dismiss
+- tapOn:
+    text: "^Close .*"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 2000
 
-# --- 3 · Channel page (via the show capsule on the player) ---
+# --- 3 · Channel page (via the show capsule, a11y "View <show>"; the negative
+#         lookahead excludes the "View artifact: …" pill on the same card) ---
 - tapOn:
-    text: "View .*"
+    text: "View (?![Aa]rtifact).*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
@@ -47,16 +52,26 @@ appId: host.exp.Exponent
 - takeScreenshot: artifacts/22-channel-about
 - scroll
 - takeScreenshot: artifacts/23-channel-bottom
-# back to the tab shell (iOS edge-swipe back)
-- swipe:
-    start: "2%,50%"
-    end: "85%,50%"
+# back to the tab shell via the labelled back control (channel header floats,
+# so scroll back up first); the edge-swipe gesture is banned — on a dead app it
+# just flips SpringBoard pages and hides the real failure
+- scrollUntilVisible:
+    element:
+      text: "^(Back|Go back)$"
+    direction: UP
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "^(Back|Go back)$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
 
-# --- 4 · Home tab ---
+# --- 4 · Home tab (tab taps are optional: a failed stop should cost its own
+#         screenshots, not the rest of the sweep) ---
 - tapOn:
     text: "^Home$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/30-home-top
@@ -68,6 +83,7 @@ appId: host.exp.Exponent
 # --- 5 · Discover tab ---
 - tapOn:
     text: "^Discover$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/40-discover-top
@@ -79,6 +95,7 @@ appId: host.exp.Exponent
 # --- 6 · Search tab: empty state + live results ---
 - tapOn:
     text: "^Search$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: artifacts/50-search-empty
@@ -94,6 +111,7 @@ appId: host.exp.Exponent
 # --- 7 · Library tab ---
 - tapOn:
     text: "^Library$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/60-library-top
@@ -103,10 +121,12 @@ appId: host.exp.Exponent
 # --- 8 · Account (Home tab → avatar), then each tab-strip pane ---
 - tapOn:
     text: "^Home$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
     text: "Profile and settings.*"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/70-account-top
