@@ -41,15 +41,13 @@ appId: host.exp.Exponent
           point: "93%,52%"
       - waitForAnimationToEnd:
           timeout: 5000
-# The dev menu can appear LATE (after the first dismissal loop ran against a
-# still-loading app — observed 2026-08-18: loop exhausted, menu landed after,
-# 90s wait died). Wait a bounded stretch, then run a second dismissal round.
-- extendedWaitUntil:
-    visible: "Home"
-    timeout: 45000
-    optional: true
+# The dev menu can appear ARBITRARILY late (observed 17:37 run 32165354665:
+# it landed after both fixed dismissal rounds and sat through the final 60s
+# wait). Keep dismissing until the tab bar is actually up: each iteration
+# handles a late 'Open' dialog, taps the sheet's X position, then gives the
+# app 15s to show Home. 8 iterations ≈ 2 min worst case.
 - repeat:
-    times: 3
+    times: 8
     while:
       notVisible: "Home"
     commands:
@@ -58,9 +56,11 @@ appId: host.exp.Exponent
           optional: true
       - tapOn:
           point: "93%,52%"
-      - waitForAnimationToEnd:
-          timeout: 5000
+      - extendedWaitUntil:
+          visible: "Home"
+          timeout: 15000
+          optional: true
 - extendedWaitUntil:
     visible: "Home"
-    timeout: 60000
+    timeout: 30000
 - takeScreenshot: artifacts/12-logged-in
