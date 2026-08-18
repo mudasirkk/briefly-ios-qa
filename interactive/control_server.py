@@ -133,6 +133,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._reply_result(run(["xcrun", "simctl", "ui", UDID, "appearance", str(b.get("value", "light"))]))
             if path == "/button":
                 return self._reply_result(run([IDB, "ui", "button", "--udid", UDID, str(b.get("name", "HOME"))]))
+            if path == "/shell":
+                # Arbitrary shell on the runner (token-gated; the runner is a
+                # throwaway CI VM). Needed to enable ReportCrash, stream the
+                # unified log and pull .ips crash reports out after a repro.
+                r = run(["bash", "-lc", str(b["cmd"])], timeout=int(b.get("timeout", 120)))
+                return self._reply({
+                    "rc": r.returncode,
+                    "stdout": (r.stdout or "")[-200000:],
+                    "stderr": (r.stderr or "")[-8000:],
+                })
+            if path == "/fetch":
+                # Download one file from the runner (e.g. a .ips crash report).
+                p = str(b["path"])
+                if not os.path.isfile(p):
+                    return self._reply({"error": f"no such file: {p}"}, 404)
+                data = open(p, "rb").read()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
         except KeyError as e:
             return self._reply({"error": f"missing field {e}"}, 400)
         except Exception as e:
