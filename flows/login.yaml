@@ -29,7 +29,23 @@ appId: host.exp.Exponent
           point: "93%,52%"
       - waitForAnimationToEnd:
           timeout: 5000
+# The dev menu can appear LATE (after the first dismissal loop ran against a
+# still-loading app — observed 2026-08-18: loop exhausted, menu landed after,
+# 90s wait died). Wait a bounded stretch, then run a second dismissal round.
 - extendedWaitUntil:
     visible: "Home"
-    timeout: 90000
+    timeout: 45000
+    optional: true
+- repeat:
+    times: 3
+    while:
+      notVisible: "Home"
+    commands:
+      - tapOn:
+          point: "93%,52%"
+      - waitForAnimationToEnd:
+          timeout: 5000
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 60000
 - takeScreenshot: artifacts/12-logged-in
