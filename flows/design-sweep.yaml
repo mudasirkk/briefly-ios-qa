@@ -15,6 +15,42 @@ appId: host.exp.Exponent
 #         the END via log-out (section 10), not by a pre-injection open. ---
 - runFlow: login.yaml
 
+# --- 1b · Dark runs: the app follows its own stored theme preference, not the
+#          system appearance (dark run 32173425772 rendered light on a dark
+#          sim). Set in-app dark via the account header toggle — its a11y label
+#          encodes state ("Switch to dark theme" exists only while light), so
+#          this self-skips when already dark. The player has a separate theme;
+#          flip its own toggle too. ---
+- runFlow:
+    when:
+      true: ${APPEARANCE == 'dark'}
+    commands:
+      - tapOn:
+          text: "^Home$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - tapOn:
+          text: "Profile and settings.*"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - tapOn:
+          text: "Switch to dark theme"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - tapOn:
+          text: "^Briefs$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - tapOn:
+          text: "Toggle player light and dark"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+
 # --- 2 · Now tab: player card + More sheet ---
 - tapOn:
     text: "^Briefs$"

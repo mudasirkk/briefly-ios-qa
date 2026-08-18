@@ -113,6 +113,7 @@ jobs:
             --env DEEP_LINK="$EXPO_DEEP_LINK" \
             --env QA_AT="$QA_AT" \
             --env QA_RT="$QA_RT" \
+            --env APPEARANCE="${{ inputs.appearance || 'light' }}" \
             --debug-output artifacts/maestro
 
       - name: Stop video recording
