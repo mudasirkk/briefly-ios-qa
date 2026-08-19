@@ -15,12 +15,18 @@ appId: host.exp.Exponent
 #         the END via log-out (section 10), not by a pre-injection open. ---
 - runFlow: login.yaml
 
-# --- 1b · Dark runs: the app follows its own stored theme preference, not the
-#          system appearance (dark run 32173425772 rendered light on a dark
-#          sim). Set in-app dark via the account header toggle — its a11y label
-#          encodes state ("Switch to dark theme" exists only while light), so
-#          this self-skips when already dark. The player has a separate theme;
-#          flip its own toggle too. ---
+# --- 1b · Pin the in-app theme to the requested appearance. The app follows its
+#          own stored preference, not the system scheme: it BOOTS DARK by default
+#          (ThemeContext comp-boot default) and then adopts the QA profile's
+#          persisted theme_preference when it loads — so neither run may assume a
+#          starting theme. The account header toggle's a11y label encodes state
+#          ("Switch to dark theme" exists only while light, and vice versa), so
+#          each block self-skips when the app already matches.
+#          DO NOT tap "Toggle player light and dark" anymore: the player theme
+#          was UNIFIED with the app theme (FeedScreen.togglePlayerTheme →
+#          setPreference) — on 2026-08-19 (runs 32226194996/32226197832) that
+#          second tap UN-DID the dark switch and the whole dark sweep rendered
+#          light (and persisted 'light' to the QA profile). ---
 - runFlow:
     when:
       true: ${APPEARANCE == 'dark'}
@@ -40,13 +46,22 @@ appId: host.exp.Exponent
           optional: true
       - waitForAnimationToEnd:
           timeout: 1500
+- runFlow:
+    when:
+      true: ${APPEARANCE == 'light'}
+    commands:
       - tapOn:
-          text: "^Briefs$"
+          text: "^Home$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - tapOn:
+          text: "Profile and settings.*"
           optional: true
       - waitForAnimationToEnd:
           timeout: 2500
       - tapOn:
-          text: "Toggle player light and dark"
+          text: "Switch to light theme"
           optional: true
       - waitForAnimationToEnd:
           timeout: 1500
@@ -98,9 +113,17 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/30-home-top
-- scroll
+# explicit swipes, NOT bare `scroll`: a centre-screen scroll lands on the hive
+# mosaic which eats the gesture — 2026-08-19 home-mid/bottom captured the
+# unscrolled top twice. Start the swipe low (over the Resume rail; horizontal
+# lists propagate vertical gestures to the page scroll).
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
 - takeScreenshot: artifacts/31-home-mid
-- scroll
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
 - takeScreenshot: artifacts/32-home-bottom
 
 # --- 5 · Discover tab ---
@@ -122,8 +145,11 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: artifacts/50-search-empty
+# target the FIELD by its placeholder — "Search.*" also matches the tab-bar
+# label/title, so the field never got focus and 51-search-results captured the
+# empty state (2026-08-19 runs)
 - tapOn:
-    text: "Search.*"
+    text: ".*episodes, clips.*"
     optional: true
 - inputText: "business"
 - waitForAnimationToEnd:
@@ -158,6 +184,12 @@ appId: host.exp.Exponent
     optional: true
 - waitForAnimationToEnd:
     timeout: 2000
+# scroll the identity block away so the pane CONTENT is on screen — the pane
+# sits below the fold and 71-74 captured the identical profile top on
+# 2026-08-19; the tab strip is sticky so later pane taps still work
+- swipe:
+    start: 50%, 75%
+    end: 50%, 35%
 - takeScreenshot: artifacts/71-account-activity
 - tapOn:
     text: "^Saved$"
@@ -318,10 +350,18 @@ appId: host.exp.Exponent
     optional: true
 - waitForAnimationToEnd:
     timeout: 2000
-# the confirm dialog's destructive button is also labelled "Log out"
-- tapOn:
-    text: "^Log out$"
-    optional: true
+# the confirm dialog's destructive button is also labelled "Log out" — but a
+# bare tapOn matches the PAGE's Log out button first and the alert stays up
+# (2026-08-19: 90-login captured the settings screen + alert). Target the
+# second match while the alert is visible.
+- runFlow:
+    when:
+      visible: "Log out\\?"
+    commands:
+      - tapOn:
+          text: "^Log out$"
+          index: 1
+          optional: true
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 30000
