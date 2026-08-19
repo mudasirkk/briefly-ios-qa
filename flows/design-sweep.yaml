@@ -351,17 +351,17 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 2000
 # the confirm dialog's destructive button is also labelled "Log out" — but a
-# bare tapOn matches the PAGE's Log out button first and the alert stays up
-# (2026-08-19: 90-login captured the settings screen + alert). Target the
-# second match while the alert is visible.
+# bare tapOn matches the PAGE's Log out button behind the alert, and an
+# `index: 1` text tap ALSO failed to land (2026-08-19 runs 32226194996 +
+# 32228315423: 90-login captured the settings screen + alert both times).
+# Tap the alert's confirm by POINT, guarded on the alert body copy; the iOS
+# alert is a fixed centered layout so the point is stable on iPhone 16.
 - runFlow:
     when:
-      visible: "Log out\\?"
+      visible: "You can sign back in any time.*"
     commands:
       - tapOn:
-          text: "^Log out$"
-          index: 1
-          optional: true
+          point: "69%,56%"
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 30000
