@@ -214,14 +214,16 @@ appId: host.exp.Exponent
 - scroll
 - takeScreenshot: artifacts/76-account-bottom
 
-# --- 9 · Onboarding (re-entry via Manage interests; the fresh first-run flow
-#         only exists pre-auth and OB-V2's in-flow auth is still landing) ---
-- scrollUntilVisible:
-    element:
-      text: "Manage interests"
-    direction: UP
-    timeout: 15000
+# --- 9 · Onboarding (re-entry via the /settings screen behind the account
+#         gear — DD-22 moved the settings rows OFF the profile scroll; the
+#         fresh first-run flow only exists pre-auth and OB-V2's in-flow auth is
+#         still landing). The gear lives in the account header, which is
+#         in-flow ABOVE the scroll, so no scrolling is needed. ---
+- tapOn:
+    text: "Open settings"
     optional: true
+- waitForAnimationToEnd:
+    timeout: 2500
 - tapOn:
     text: "Manage interests"
     optional: true
@@ -339,11 +341,17 @@ appId: host.exp.Exponent
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
+# DD-22 — Log out lives on /settings behind the gear now.
+- tapOn:
+    text: "Open settings"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2500
 - scrollUntilVisible:
     element:
       text: "^Log out$"
     direction: DOWN
-    timeout: 20000
+    timeout: 10000
     optional: true
 - tapOn:
     text: "^Log out$"
