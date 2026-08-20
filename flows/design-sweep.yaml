@@ -179,20 +179,23 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: artifacts/70-account-top
+# swipe the tab strip INTO VIEW before any tab tap — DD-14b (2026-08-20) made
+# the identity/archetype block taller, pushing the strip below the fold; a tap
+# on the off-screen "Activity" label clamped to the bottom edge and hit the tab
+# bar, bouncing the whole run to Home (71-85 captured Home-bottom). Swipe start
+# 65% stays clear of the tab bar / mini-player. The strip is sticky afterwards.
+- swipe:
+    start: 50%, 65%
+    end: 50%, 25%
 - tapOn:
     text: "^Activity$"
     optional: true
 - waitForAnimationToEnd:
     timeout: 2000
-# scroll the identity block away so the pane CONTENT is on screen — the pane
-# sits below the fold and 71-74 captured the identical profile top on
-# 2026-08-19; the tab strip is sticky so later pane taps still work
-- swipe:
-    start: 50%, 75%
-    end: 50%, 35%
 - takeScreenshot: artifacts/71-account-activity
+# Saved tab label carries a count since DD-14b — "Saved (1)"
 - tapOn:
-    text: "^Saved$"
+    text: "^Saved.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 2000
