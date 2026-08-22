@@ -284,6 +284,57 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 
+# --- 9a2 · RE-PIN the theme before the channel stops. On 2026-08-22 the DARK
+#           run rendered 20-23-channel-* in LIGHT (dark at 07:11-07:12, light by
+#           07:16): something between Home and here tripped the appearance
+#           toggle, so the sweep produced ZERO dark channel coverage and DD-17
+#           could not close. The pin is idempotent (each block self-skips when
+#           the a11y label for the opposite state is absent), so re-running it
+#           costs nothing and guarantees the channel stops match APPEARANCE. ---
+- runFlow:
+    when:
+      true: ${APPEARANCE == 'dark'}
+    commands:
+      - tapOn:
+          text: "^Home$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - tapOn:
+          text: "Profile and settings.*"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - tapOn:
+          text: "Switch to dark theme"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+- runFlow:
+    when:
+      true: ${APPEARANCE == 'light'}
+    commands:
+      - tapOn:
+          text: "^Home$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - tapOn:
+          text: "Profile and settings.*"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - tapOn:
+          text: "Switch to light theme"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+- tapOn:
+    text: "^Home$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+
 # --- 9b · Channel page (via the show capsule, a11y "View <show>"; negative
 #          lookahead excludes the "View artifact: …" pill). Runs LATE on
 #          purpose: opening the channel KILLED Expo Go on the 2026-08-18
@@ -312,13 +363,26 @@ appId: host.exp.Exponent
           optional: true
       - waitForAnimationToEnd:
           timeout: 5000
-- takeScreenshot: artifacts/20-channel-hero
-- scroll
-- takeScreenshot: artifacts/21-channel-mid
-- scroll
-- takeScreenshot: artifacts/22-channel-about
-- scroll
-- takeScreenshot: artifacts/23-channel-bottom
+# Only shoot the channel stops if we ACTUALLY landed on the channel. On
+# 2026-08-22 the light run never navigated (both taps missed) and shot four
+# /now-player frames named "channel", which the comparator then judged as the
+# channel screen. A miss must be visible as a miss, not as wrong-looking art.
+- runFlow:
+    when:
+      visible: "Latest brief.*"
+    commands:
+      - takeScreenshot: artifacts/20-channel-hero
+      - scroll
+      - takeScreenshot: artifacts/21-channel-mid
+      - scroll
+      - takeScreenshot: artifacts/22-channel-about
+      - scroll
+      - takeScreenshot: artifacts/23-channel-bottom
+- runFlow:
+    when:
+      notVisible: "Latest brief.*"
+    commands:
+      - takeScreenshot: artifacts/20-channel-MISSED
 # back to the tab shell via the labelled back control (never the edge swipe)
 - scrollUntilVisible:
     element:
