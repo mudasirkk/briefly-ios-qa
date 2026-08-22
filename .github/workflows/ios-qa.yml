@@ -116,6 +116,20 @@ jobs:
             --env APPEARANCE="${{ inputs.appearance || 'light' }}" \
             --debug-output artifacts/maestro
 
+      - name: Flatten Maestro screenshots
+        if: always()
+        run: |
+          # Maestro >= the version pinned here writes takeScreenshot output under
+          # <debug-output>/.maestro/tests/<ts>/<flow>/takeScreenshot/<path>.png
+          # instead of the flow's CWD. The comparator (and the daily-design-diff
+          # routine) expect the NN-slug.png files flat at the artifact root, so
+          # copy them back. Harmless no-op on Maestro versions that write to CWD.
+          shopt -s nullglob
+          for d in artifacts/maestro/.maestro/tests/*/*/takeScreenshot/artifacts; do
+            cp "$d"/*.png artifacts/ 2>/dev/null || true
+          done
+          ls artifacts/*.png | wc -l
+
       - name: Stop video recording
         if: always()
         run: |
