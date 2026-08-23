@@ -394,6 +394,16 @@ appId: host.exp.Exponent
 # 2026-08-22 the light run never navigated (both taps missed) and shot four
 # /now-player frames named "channel", which the comparator then judged as the
 # channel screen. A miss must be visible as a miss, not as wrong-looking art.
+# The MISSED branch is evaluated FIRST, before any scrolling. On 2026-08-23 the
+# marker fix worked and all four channel stops were captured, but the MISSED shot
+# ALSO fired: the notVisible gate was re-evaluated after the visible branch had
+# scrolled the hero pill off screen, so a successful capture still produced a
+# "MISSED" artifact. Ordering the gates this way makes them genuinely exclusive.
+- runFlow:
+    when:
+      notVisible: ".*[Ll]atest brief.*"
+    commands:
+      - takeScreenshot: artifacts/20-channel-MISSED
 - runFlow:
     when:
       visible: ".*[Ll]atest brief.*"
@@ -405,11 +415,6 @@ appId: host.exp.Exponent
       - takeScreenshot: artifacts/22-channel-about
       - scroll
       - takeScreenshot: artifacts/23-channel-bottom
-- runFlow:
-    when:
-      notVisible: ".*[Ll]atest brief.*"
-    commands:
-      - takeScreenshot: artifacts/20-channel-MISSED
 # back to the tab shell via the labelled back control (never the edge swipe)
 - scrollUntilVisible:
     element:
