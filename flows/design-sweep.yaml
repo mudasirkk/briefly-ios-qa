@@ -369,15 +369,21 @@ appId: host.exp.Exponent
 - tapOn:
     text: "View (?![Aa]rtifact).*"
     optional: true
-# channel-page marker = the "Latest brief · N min" play pill; retry once if the
-# first tap didn't navigate
+# channel-page marker = the hero play pill. Its label is "Latest brief · N min"
+# ONLY when the newest brief has a duration; channelData.ts falls back to
+# "Play latest brief" when totalSec is 0 — and the old anchor "Latest brief.*"
+# cannot match that fallback, so a channel page that loaded FINE was scored as
+# a miss. That is the likeliest cause of the 2026-08-22 and 2026-08-23 double
+# MISS (on 08-23 the first "View <show>" tap SUCCEEDED in the dark run, then
+# the marker assert failed anyway). Match either label form.
+# retry once if the first tap didn't navigate
 - extendedWaitUntil:
-    visible: "Latest brief.*"
+    visible: ".*[Ll]atest brief.*"
     timeout: 6000
     optional: true
 - runFlow:
     when:
-      notVisible: "Latest brief.*"
+      notVisible: ".*[Ll]atest brief.*"
     commands:
       - tapOn:
           text: "View (?![Aa]rtifact).*"
@@ -390,7 +396,7 @@ appId: host.exp.Exponent
 # channel screen. A miss must be visible as a miss, not as wrong-looking art.
 - runFlow:
     when:
-      visible: "Latest brief.*"
+      visible: ".*[Ll]atest brief.*"
     commands:
       - takeScreenshot: artifacts/20-channel-hero
       - scroll
@@ -401,7 +407,7 @@ appId: host.exp.Exponent
       - takeScreenshot: artifacts/23-channel-bottom
 - runFlow:
     when:
-      notVisible: "Latest brief.*"
+      notVisible: ".*[Ll]atest brief.*"
     commands:
       - takeScreenshot: artifacts/20-channel-MISSED
 # back to the tab shell via the labelled back control (never the edge swipe)
