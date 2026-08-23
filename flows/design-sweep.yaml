@@ -428,6 +428,17 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 3000
 
+# !! SHARED-SESSION HAZARD (root-caused 2026-08-23) !!
+#    The light and dark sweeps run CONCURRENTLY as the SAME QA user, and the
+#    app's sign-out revokes the Supabase session GLOBALLY. On 2026-08-23 the
+#    dark run tapped Log out at 07:28:47 and the light run's very next
+#    authenticated request (the onboarding taxonomy fetch, 07:29:04) came back
+#    401 - stranding it on an error screen for its last 11 stops. The same
+#    hazard hit in reverse on 2026-08-20, breaking the other run's logout.
+#    Nothing in THIS file can fix it: the logout is already the last section,
+#    and which run reaches it first is a race. The fix is a per-appearance QA
+#    user in ios-qa.yml's session injection. Until then, expect one of any two
+#    concurrent runs to lose everything after the other one logs out.
 # --- 10 · Login screen, LAST (log out; fresh sim each run + a new session is
 #          minted per run, so signing out costs nothing) ---
 - tapOn:
