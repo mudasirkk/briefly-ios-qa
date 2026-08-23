@@ -221,7 +221,18 @@ appId: host.exp.Exponent
 #         gear — DD-22 moved the settings rows OFF the profile scroll; the
 #         fresh first-run flow only exists pre-auth and OB-V2's in-flow auth is
 #         still landing). The gear lives in the account header, which is
-#         in-flow ABOVE the scroll, so no scrolling is needed. ---
+#         in-flow ABOVE the scroll, so no scrolling is needed.
+#
+#         2026-08-23 REWRITE for OB-V2 stages 1-6 (briefly1 #203, main 345faa4).
+#         The beat order became hook > intent > auth > taste > shows > curate >
+#         ctx > len > reveal, and "Manage interests" re-entry starts at `taste`.
+#         The calibrate keep/skip deck is RETIRED (follow-seeding replaced it),
+#         so the old "Keep this brief" x6 block is gone, and `rhythm` was split
+#         into moments (ctx) + brief length (len). CTA labels per beat:
+#         taste=Continue, shows=Done, curate=Done, ctx=Continue, len=Continue.
+#         Slug changes: 81-ob-rhythm and 82-ob-next RETIRED; 81-ob-shows,
+#         82-ob-curate, 83-ob-moments, 84-ob-length are NEW; permission/ready/
+#         ready-grid shifted 83/84/85 -> 85/86/87. ---
 - tapOn:
     text: "Open settings"
     optional: true
@@ -245,28 +256,38 @@ appId: host.exp.Exponent
 - tapOn:
     text: "Continue.*"
     optional: true
+# shows (follow-seeding) — replaces the retired calibrate deck. It is SKIPPED
+# when no suggestions load (taste falls straight through to ctx), so every stop
+# below screenshots whatever is actually on screen.
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: artifacts/81-ob-shows
+- tapOn:
+    text: "^Done$"
+    optional: true
 - waitForAnimationToEnd:
     timeout: 3000
-- takeScreenshot: artifacts/81-ob-rhythm
+- takeScreenshot: artifacts/82-ob-curate
+- tapOn:
+    text: "^Done$"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: artifacts/83-ob-moments
 - tapOn:
     text: "Continue.*"
     optional: true
 - waitForAnimationToEnd:
     timeout: 3000
-- takeScreenshot: artifacts/82-ob-next
-- repeat:
-    times: 6
-    commands:
-      - tapOn:
-          text: "Keep this brief"
-          optional: true
-      - waitForAnimationToEnd:
-          timeout: 1500
+- takeScreenshot: artifacts/84-ob-length
+- tapOn:
+    text: "Continue.*"
+    optional: true
 - extendedWaitUntil:
     visible: "Want your feed ready every morning?"
     timeout: 25000
     optional: true
-- takeScreenshot: artifacts/83-ob-permission
+- takeScreenshot: artifacts/85-ob-permission
 - tapOn:
     text: "Maybe later"
     optional: true
@@ -274,9 +295,9 @@ appId: host.exp.Exponent
     visible: ".*your feed is ready.*"
     timeout: 20000
     optional: true
-- takeScreenshot: artifacts/84-ob-ready
+- takeScreenshot: artifacts/86-ob-ready
 - scroll
-- takeScreenshot: artifacts/85-ob-ready-grid
+- takeScreenshot: artifacts/87-ob-ready-grid
 # leave onboarding for the tab shell
 - tapOn:
     text: "Start listening"
