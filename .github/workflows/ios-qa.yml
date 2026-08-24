@@ -17,6 +17,15 @@ defaults:
   run:
     shell: bash
 
+# The sweep authenticates as ONE shared QA user, and Supabase sign-out revokes
+# globally: a run that reaches the logout stop kills any concurrent run's session
+# mid-flight (2026-08-20 and 2026-08-23 both lost a mode to this). Serialize every
+# iOS QA run so two can never overlap; queue rather than cancel.
+concurrency:
+  group: ios-qa-shared-session
+  cancel-in-progress: false
+
+
 jobs:
   ios-qa:
     runs-on: macos-15
