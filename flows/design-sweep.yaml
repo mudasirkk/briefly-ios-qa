@@ -480,6 +480,41 @@ appId: host.exp.Exponent
     commands:
       - tapOn:
           point: "69%,56%"
+# 2026-08-24 (run 32703588005): the confirm landed, but the app's POST to
+# /auth/v1/logout?scope=global died with "The network connection was lost" in
+# the simulator. The app raised its honest "Log out failed / Please try again"
+# alert and 90-login captured Settings-behind-an-alert — the THIRD consecutive
+# day light mode failed to photograph the login screen, each time for a
+# different reason. A transient network blip should cost a retry, not a stop.
+- repeat:
+    times: 3
+    while:
+      visible: "Log out failed"
+    commands:
+      - tapOn:
+          text: "^OK$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - scrollUntilVisible:
+          element:
+            text: "^Log out$"
+          direction: DOWN
+          timeout: 10000
+          optional: true
+      - tapOn:
+          text: "^Log out$"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - runFlow:
+          when:
+            visible: "You can sign back in any time.*"
+          commands:
+            - tapOn:
+                point: "69%,56%"
+      - waitForAnimationToEnd:
+          timeout: 3000
 - extendedWaitUntil:
     visible: "Continue with Google"
     timeout: 30000
