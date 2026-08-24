@@ -15,6 +15,22 @@ appId: host.exp.Exponent
 #         the END via log-out (section 10), not by a pre-injection open. ---
 - runFlow: login.yaml
 
+# --- 1a · HARD LAUNCH GATE. Not optional, and deliberately the only non-optional
+#          assertion in the sweep. Twice now a run has failed to open the bundle
+#          and sat on the Expo Go home screen for its whole duration, while
+#          Maestro happily emitted all 31 correctly-named screenshots because
+#          every later tap is `optional: true` (2026-08-23 light2, 2026-08-24
+#          dark run 32705486615). The filenames alone cannot tell you a run is
+#          good, and a silent junk run costs a whole mode for the day. Fail here
+#          instead: if the Briefly UI is not on screen after the deep link, the
+#          run goes red immediately and says why.
+- extendedWaitUntil:
+    visible:
+      text: "Briefs|Discover|Library|Welcome back.*"
+    timeout: 60000
+- assertVisible:
+    text: "Briefs|Discover|Library|Welcome back.*"
+
 # --- 1b · Pin the in-app theme to the requested appearance. The app follows its
 #          own stored preference, not the system scheme: it BOOTS DARK by default
 #          (ThemeContext comp-boot default) and then adopts the QA profile's
