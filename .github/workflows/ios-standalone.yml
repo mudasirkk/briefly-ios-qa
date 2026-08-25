@@ -33,6 +33,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Select the newest Xcode for brew (idb-companion requires Xcode.app 26)
+        run: |
+          # brew's idb-companion formula hard-requires a FULL Xcode 26 selected
+          # at install time ("A full installation of Xcode.app 26.0 is required
+          # to compile this software"). Select the newest Xcode now; the step
+          # below switches back to Xcode 16 (iOS 18 sims) BEFORE the simulator
+          # is created/booted. Same ordering as ios-interactive.yml.
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$XCODE" ] && XCODE=/Applications/Xcode.app
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Install idb + cloudflared
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
+        run: |
+          brew install cloudflared python@3.11
+          brew tap facebook/fb
+          brew install idb-companion
+          # fb-idb's CLI raises under Python 3.14 (asyncio.get_event_loop removed),
+          # so install it into a dedicated 3.11 venv and expose that binary as IDB.
+          /opt/homebrew/opt/python@3.11/bin/python3.11 -m venv /tmp/idbvenv
+          /tmp/idbvenv/bin/pip install --quiet --upgrade pip
+          /tmp/idbvenv/bin/pip install --quiet fb-idb
+          echo "IDB=/tmp/idbvenv/bin/idb" >> "$GITHUB_ENV"
+          /tmp/idbvenv/bin/idb --version || true
+          cloudflared --version || true
+
       - name: Select Xcode 16 (iOS 18 sims — SDK 54)
         run: |
           XCODE=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
@@ -55,20 +83,6 @@ jobs:
           echo "installing $APP"
           xcrun simctl install "$UDID" "$APP"
 
-      - name: Install idb + cloudflared
-        env:
-          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
-        run: |
-          brew install cloudflared python@3.11
-          brew tap facebook/fb
-          brew install idb-companion
-          /opt/homebrew/opt/python@3.11/bin/python3.11 -m venv /tmp/idbvenv
-          /tmp/idbvenv/bin/pip install --quiet --upgrade pip
-          /tmp/idbvenv/bin/pip install --quiet fb-idb
-          echo "IDB=/tmp/idbvenv/bin/idb" >> "$GITHUB_ENV"
-          /tmp/idbvenv/bin/idb --version || true
-          cloudflared --version || true
-
       - name: Start idb companion
         run: |
           nohup idb_companion --udid "$UDID" --grpc-port 10882 >/tmp/idb_companion.log 2>&1 &
@@ -89,7 +103,17 @@ jobs:
             -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}")
           AT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
           RT=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('refresh_token',''))")
-          if [ -z "$AT" ] || [ -z "$RT" ]; then echo "mint failed: $(printf '%s' "$resp" | head -c 200)"; exit 1; fi
+          # Non-fatal: if the grant is refused (e.g. Supabase captcha protection
+          # is on and this request carries no captcha_token) we still want the
+          # simulator + tunnel so a driver can test the LOGGED-OUT surfaces and
+          # reproduce the sign-in failure in the UI. The launch step handles an
+          # empty QA_AT by just opening the app.
+          if [ -z "$AT" ] || [ -z "$RT" ]; then
+            echo "MINT_FAILED: $(printf '%s' "$resp" | head -c 300)"
+            echo "QA_MINT_OK=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "QA_MINT_OK=1" >> "$GITHUB_ENV"
           echo "::add-mask::$AT"; echo "::add-mask::$RT"
           echo "QA_AT=$AT" >> "$GITHUB_ENV"; echo "QA_RT=$RT" >> "$GITHUB_ENV"
           echo "minted QA session (at_len=${#AT})"
@@ -98,7 +122,11 @@ jobs:
         run: |
           xcrun simctl launch "$UDID" "$BUNDLE_ID" || true
           sleep 2
-          xcrun simctl openurl "$UDID" "briefly://?qa_at=$QA_AT&qa_rt=$QA_RT" || true
+          if [ "${QA_MINT_OK:-0}" = "1" ]; then
+            xcrun simctl openurl "$UDID" "briefly://?qa_at=$QA_AT&qa_rt=$QA_RT" || true
+          else
+            echo "no QA session minted — app left LOGGED OUT for the driver"
+          fi
           sleep 2
 
       - name: Serve control API over a tunnel
